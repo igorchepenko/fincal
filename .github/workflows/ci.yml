@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test-and-build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      - name: Тесты TypeScript
+        run: npm test
+
+      - name: Проверка типов и сборка фронтенда
+        run: npm run build
+
+      - name: Тесты Rust
+        run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Сборка .dmg
+        run: npx tauri build --bundles dmg
+
+      - name: Выложить .dmg в Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: FinCal-dmg
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
