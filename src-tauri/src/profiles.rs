@@ -149,7 +149,7 @@ mod tests {
     }
 
     fn account(conn: &Connection, owner: i64, name: &str) -> i64 {
-        store::create_account(conn, owner, &NewAccount { name: name.into(), kind: "card".into(), opening_balance_kop: 0 }).unwrap()
+        store::create_account(conn, owner, &NewAccount { name: name.into(), ..Default::default() }).unwrap()
     }
 
     #[test]

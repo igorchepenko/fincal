@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { defaultScreen, screens, type ScreenDef, type ScreenId } from "./screens";
+import { AccountsScreen } from "../accounts/AccountsScreen";
 import { ProfileSwitcher } from "../profiles/ProfileSwitcher";
 import { useProfiles } from "../profiles/ProfileContext";
 import { applyTheme, loadTheme, saveTheme, themeModes, type ThemeMode } from "./theme";
@@ -78,7 +79,7 @@ export function Shell({ version, initialScreen = defaultScreen }: { version: str
         <h1 id="screen-title" className="shell-title">
           {screen.title}
         </h1>
-        <EmptyScreen screen={screen} />
+        {screen.id === "accounts" ? <AccountsScreen /> : <EmptyScreen screen={screen} />}
       </main>
     </div>
   );

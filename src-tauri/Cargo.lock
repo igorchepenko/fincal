@@ -838,6 +838,7 @@ name = "fincal"
 version = "0.3.0"
 dependencies = [
  "rusqlite",
+ "serde",
  "tauri",
  "tauri-build",
 ]

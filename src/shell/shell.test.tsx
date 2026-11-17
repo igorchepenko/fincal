@@ -46,11 +46,21 @@ describe("окно", () => {
   it("показывает сайдбар, активный раздел и пустое состояние", () => {
     const html = renderToString(
       <ProfileProvider api={noApi}>
-        <Shell version="0.0.0" initialScreen="accounts" />
+        <Shell version="0.0.0" initialScreen="payments" />
       </ProfileProvider>,
     );
     for (const s of screens) expect(html).toContain(s.title);
-    expect(html).toContain("Счетов пока нет");
+    expect(html).toContain("Платежей пока нет");
     expect(html).toContain('aria-current="page"');
+  });
+
+  it("раздел «Счета» открывает экран счетов, а не заглушку", () => {
+    const html = renderToString(
+      <ProfileProvider api={noApi}>
+        <Shell version="0.0.0" initialScreen="accounts" />
+      </ProfileProvider>,
+    );
+    expect(html).toContain('class="acc-none"');
+    expect(html).not.toContain("Счетов пока нет");
   });
 });

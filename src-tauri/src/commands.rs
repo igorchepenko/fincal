@@ -1,7 +1,7 @@
 //! Tauri-команды: тонкая обёртка над `store`. Экраны вызывают только их.
 
 use crate::profiles::{self, Profile};
-use crate::store::{self, Account, Category, NewAccount, NewCategory, NewRule, NewTransaction, Tag, Transaction};
+use crate::store::{self, Account, AccountUpdate, Category, NewAccount, NewCategory, NewRule, NewTransaction, Tag, Transaction};
 use rusqlite::Connection;
 use std::sync::{Mutex, MutexGuard};
 use tauri::State;
@@ -35,6 +35,18 @@ pub fn list_accounts(db: State<Db>) -> Res<Vec<Account>> {
 pub fn create_account(db: State<Db>, account: NewAccount) -> Res<i64> {
     let (conn, owner) = scoped(&db)?;
     store::create_account(&*conn, owner, &account).map_err(err)
+}
+
+#[tauri::command]
+pub fn update_account(db: State<Db>, id: i64, update: AccountUpdate) -> Res<()> {
+    let (conn, owner) = scoped(&db)?;
+    store::update_account(&*conn, owner, id, &update).map_err(err)
+}
+
+#[tauri::command]
+pub fn archive_account(db: State<Db>, id: i64, archived: bool) -> Res<()> {
+    let (conn, owner) = scoped(&db)?;
+    store::set_account_archived(&*conn, owner, id, archived).map_err(err)
 }
 
 #[tauri::command]

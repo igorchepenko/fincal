@@ -24,3 +24,33 @@
 input.inp{border:0;outline:0;width:100%;font:inherit;font-weight:500}
 input.inp:focus{background:var(--surface);box-shadow:0 0 0 1.5px var(--field-focus),0 0 0 4px var(--accent-soft)}
 input.inp.err:focus{box-shadow:0 0 0 1.5px var(--field-error),0 0 0 4px var(--field-error-soft)}
+/* Счета */
+.card.acc-total{flex-direction:row;align-items:center;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 20px}
+.acc-total-note{color:var(--text-faint);font-size:12px}
+.acc-none{margin:0;color:var(--text-faint)}
+.acc-row{flex-wrap:wrap}
+.acc-row .ai{background:color-mix(in srgb,var(--c) 14%,var(--surface));color:var(--c)}
+.acc-row.archived{opacity:.7}
+.acc-row .av{display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:96px}
+.acc-row .av .amt{font-size:14px}
+.acc-debt{color:var(--text-faint);font-size:11px}
+.acc-acts{display:flex;align-items:center;gap:6px;flex:none}
+.acc-archive{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.acc-archive .acc-list{align-self:stretch}
+.acc-kinds{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.acc-kinds .rad{text-align:left;align-items:center}
+.acc-money{padding:0 12px 0 0}
+.acc-money input.inp{background:transparent;box-shadow:none;height:100%}
+.acc-money input.inp:focus{background:transparent;box-shadow:none}
+.acc-money:focus-within{background:var(--surface);box-shadow:0 0 0 1.5px var(--field-focus),0 0 0 4px var(--accent-soft)}
+textarea.inp{height:auto;padding:9px 12px;border:0;outline:0;width:100%;font:inherit;font-weight:500;resize:vertical;display:block}
+textarea.inp:focus{background:var(--surface);box-shadow:0 0 0 1.5px var(--field-focus),0 0 0 4px var(--accent-soft)}
+.icopick{display:flex;gap:8px;flex-wrap:wrap}
+.icopick button{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--well);box-shadow:inset 0 0 0 1px var(--line);color:var(--icon)}
+.icopick button.on{background:var(--accent-soft);color:var(--accent-text);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.swpick button:not(.on){box-shadow:none}
+.dlg{max-height:calc(100vh - 32px)}
+.dlg:has(.acc-form){width:520px;overflow:auto}
+.acc-form{gap:12px}
+.acc-form .dlg-foot{position:sticky;bottom:-20px;margin-bottom:-20px;padding-bottom:20px;background:var(--surface);z-index:1}
+button.sw{border:0;padding:0;cursor:pointer}
