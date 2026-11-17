@@ -66,3 +66,71 @@ button.sw{border:0;padding:0;cursor:pointer}
 .lock-when .lbl{width:140px}
 .lock-min{width:110px;height:var(--control)}
 .lock-min input{width:100%;min-width:0;border:0;background:none;outline:none;font:inherit;color:inherit;padding:0}
+
+/* Платежи */
+.pay-period-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.pay-nav{display:flex;align-items:center;gap:4px}
+.pay-ptitle{min-width:150px;text-align:center;color:var(--text-strong);font-weight:600}
+.pay-custom{display:flex;align-items:center;gap:8px}
+.pay-custom .inp{width:150px}
+.pay-perr{margin:0;flex-basis:100%}
+.pay-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+select.inp.pay-acc-sel{width:auto;min-width:150px;height:var(--control)}
+select.inp{border:0;outline:0;width:100%;font:inherit;font-weight:500;cursor:pointer}
+select.inp:focus,input[type="date"].inp:focus{background:var(--surface);box-shadow:0 0 0 1.5px var(--field-focus),0 0 0 4px var(--accent-soft)}
+input[type="date"].inp{border:0;outline:0;width:100%;font:inherit;font-weight:500}
+.card.pay-sum-card{flex-direction:row;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 20px}
+.pay-sum-main{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pay-sum-card .amt.big{text-align:left}
+.pay-k-l{color:var(--text-faint);font-size:12px}
+.pay-sum-acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card.pay-month{gap:0;padding:8px 8px 12px}
+.pay-mh{padding:12px 12px 8px;font-size:13px}
+.pay-mt{color:var(--text-strong);font-weight:700;font-size:14px}
+.pay-mtot{display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.pay-mtot .amt{font-size:12px}
+.prow.pay-row{grid-template-columns:18px 32px minmax(0,1fr) minmax(0,190px) 124px 32px}
+.pay-cb{border:0;padding:0;cursor:pointer;background:transparent}
+.pay-cb.on{background:var(--success)}
+.pay-cb.pick{background:var(--accent)}
+.pay-cb.cb.skip{background:transparent}
+.pay-pi.in{background:var(--income-soft);color:var(--income-text);box-shadow:none}
+.pay-pi.out{background:var(--expense-soft);color:var(--expense-text);box-shadow:none}
+.pay-pi .ic{width:16px;height:16px}
+.pay-note{overflow:hidden;text-overflow:ellipsis}
+.pay-chip{min-width:0;display:flex;justify-content:flex-end}
+.pay-chip .chip{max-width:100%}
+.pay-chip-t{overflow:hidden;text-overflow:ellipsis}
+.pay-sum{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.pay-sum small{color:var(--text-faint);font-size:11px;white-space:nowrap}
+.pay-menu{position:relative}
+.pay-menu-pop{position:absolute;right:0;top:calc(100% + 4px);z-index:20}
+.pay-del{color:var(--danger-text)}
+.menu .mi{width:100%;text-align:left}
+.pay-more{align-self:center;margin-top:6px}
+.pay-skipped{margin:6px 12px 0;color:var(--text-faint);font-size:12px}
+.pay-bulk{position:fixed;left:calc(50% + 110px);transform:translateX(-50%);bottom:24px;z-index:30}
+@media (max-width:900px){.prow.pay-row{grid-template-columns:18px 32px minmax(0,1fr) 124px 32px}.pay-chip{display:none}}
+/* Форма платежа */
+.dlg:has(.pay-form){width:540px;overflow:auto}
+.pay-form{gap:12px}
+.pay-form .dlg-foot{position:sticky;bottom:-20px;margin-bottom:-20px;padding-bottom:20px;background:var(--surface);z-index:1}
+.pay-money{padding:0 16px}
+.pay-money input.inp{background:transparent;box-shadow:none;height:100%;font:inherit;padding:0}
+.pay-money input.inp:focus{background:transparent;box-shadow:none}
+.pay-money:focus-within{background:var(--surface);box-shadow:0 0 0 1.5px var(--field-focus),0 0 0 4px var(--accent-soft)}
+.pay-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pay-rec{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:var(--r-lg);background:var(--well);box-shadow:inset 0 0 0 1px var(--line)}
+.pay-rec .flab{margin-bottom:0}
+.pay-rec-row{display:flex;align-items:center;gap:12px;justify-content:space-between}
+.pay-int{display:flex;align-items:center;gap:8px;color:var(--text)}
+.pay-int .inp{width:72px;text-align:right}
+.pay-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.pay-md{display:flex;gap:8px;align-items:center;margin-top:6px}
+.pay-period{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pay-period .flab{margin-bottom:6px}
+.pay-from{color:var(--text-faint)}
+.pay-preview{padding:10px 12px;border-radius:var(--r-md);background:var(--accent-soft);color:var(--accent-text);font-weight:600}
+.pay-preview.bad{background:var(--warning-soft);color:var(--warning-text)}
+.rad.muted{opacity:.55;cursor:not-allowed}
+button.rad{text-align:left;width:100%}

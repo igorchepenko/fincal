@@ -37,12 +37,12 @@ pub type Result<T> = std::result::Result<T, StoreError>;
 
 /// Проверяет, что запись `table` с этим id принадлежит владельцу и не удалена.
 /// Так данные профилей не смешиваются даже при подставленном чужом id.
-fn belongs_to(conn: &Connection, table: &'static str, id: i64, owner: i64) -> Result<bool> {
+pub(crate) fn belongs_to(conn: &Connection, table: &'static str, id: i64, owner: i64) -> Result<bool> {
     let sql = format!("SELECT 1 FROM {table} WHERE id = ?1 AND owner_id = ?2 AND deleted_at IS NULL");
     Ok(conn.query_row(&sql, params![id, owner], |_| Ok(())).optional()?.is_some())
 }
 
-fn require(conn: &Connection, table: &'static str, id: i64, owner: i64, msg: &'static str) -> Result<()> {
+pub(crate) fn require(conn: &Connection, table: &'static str, id: i64, owner: i64, msg: &'static str) -> Result<()> {
     if belongs_to(conn, table, id, owner)? {
         Ok(())
     } else {
@@ -374,15 +374,7 @@ pub struct NewTransaction {
 }
 
 fn is_valid_day(s: &str) -> bool {
-    let b = s.as_bytes();
-    if b.len() != 10 || b[4] != b'-' || b[7] != b'-' {
-        return false;
-    }
-    let num = |r: std::ops::Range<usize>| s[r].parse::<u32>().ok();
-    match (num(0..4), num(5..7), num(8..10)) {
-        (Some(_), Some(m), Some(d)) => (1..=12).contains(&m) && (1..=31).contains(&d),
-        _ => false,
-    }
+    crate::recurrence::Date::parse(s).is_some()
 }
 
 pub fn create_transaction(conn: &mut Connection, owner: i64, t: &NewTransaction) -> Result<i64> {
@@ -438,10 +430,10 @@ fn tag_ids_of(conn: &Connection, transaction_id: i64) -> Result<Vec<i64>> {
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
-const TX_COLUMNS: &str = "id, account_id, to_account_id, category_id, rule_id, direction, title, note,
+pub(crate) const TX_COLUMNS: &str = "id, account_id, to_account_id, category_id, rule_id, direction, title, note,
     amount_kop, actual_amount_kop, currency, planned_on, status, completed_at";
 
-fn tx_from_row(r: &Row) -> rusqlite::Result<Transaction> {
+pub(crate) fn tx_from_row(r: &Row) -> rusqlite::Result<Transaction> {
     Ok(Transaction {
         id: r.get(0)?,
         account_id: r.get(1)?,
@@ -591,33 +583,6 @@ pub fn set_transaction_tags(conn: &mut Connection, owner: i64, transaction_id: i
     }
     tx.commit()?;
     Ok(())
-}
-
-// ---------- Правила повторения ----------
-
-#[derive(Debug, Deserialize)]
-pub struct NewRule {
-    pub frequency: String,
-    #[serde(default = "one")]
-    pub interval_n: i64,
-    pub starts_on: String,
-    pub ends_on: Option<String>,
-}
-
-fn one() -> i64 {
-    1
-}
-
-pub fn create_rule(conn: &Connection, owner: i64, r: &NewRule) -> Result<i64> {
-    if !is_valid_day(&r.starts_on) || r.ends_on.as_deref().is_some_and(|d| !is_valid_day(d)) {
-        return Err(StoreError::Invalid("дата должна быть в формате ГГГГ-ММ-ДД"));
-    }
-    conn.execute(
-        "INSERT INTO recurrence_rules (owner_id, frequency, interval_n, starts_on, ends_on)
-         VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![owner, r.frequency, r.interval_n, r.starts_on, r.ends_on],
-    )?;
-    Ok(conn.last_insert_rowid())
 }
 
 // ---------- Настройки ----------
@@ -840,8 +805,12 @@ mod tests {
     fn recurrence_rule_links_and_prevents_duplicates() {
         let mut conn = fresh();
         let acc = account(&conn, "Карта", "debit_card", 0);
-        let rule = create_rule(&conn, O, &NewRule { frequency: "monthly".into(), interval_n: 1, starts_on: "2030-01-15".into(), ends_on: None }).unwrap();
-        assert!(create_rule(&conn, O, &NewRule { frequency: "hourly".into(), interval_n: 1, starts_on: "2030-01-15".into(), ends_on: None }).is_err());
+        conn.execute(
+            "INSERT INTO recurrence_rules (owner_id, frequency, interval_n, rrule, starts_on, ends_on) VALUES (?1, 'monthly', 1, 'FREQ=MONTHLY;INTERVAL=1', '2030-01-15', '2030-12-15')",
+            [O],
+        )
+        .unwrap();
+        let rule = conn.last_insert_rowid();
         let mut t = new_tx(acc, "expense", 4_500_000, "2030-01-15");
         t.rule_id = Some(rule);
         create_transaction(&mut conn, O, &t).unwrap();

@@ -1,7 +1,9 @@
 mod auth;
 mod commands;
 mod db;
+mod payments;
 mod profiles;
+mod recurrence;
 mod lock;
 mod lock_commands;
 mod store;
@@ -37,7 +39,13 @@ pub fn run() {
             commands::list_tags,
             commands::create_tag,
             commands::set_transaction_tags,
-            commands::create_rule,
+            commands::create_payment,
+            commands::list_payments,
+            commands::get_payment,
+            commands::get_recurrence,
+            commands::preview_recurrence,
+            commands::update_payment,
+            commands::delete_payment,
             commands::get_setting,
             commands::set_setting,
             commands::list_profiles,

@@ -1,7 +1,8 @@
 //! Tauri-команды: тонкая обёртка над `store`. Экраны вызывают только их.
 
+use crate::payments::{self, CreatedPayments, NewPayment, PaymentFilter, PaymentList, PaymentPatch, RecurrenceInfo, RecurrencePreview, RecurrenceSpec, Scope, UpdateResult};
 use crate::profiles::{self, Profile};
-use crate::store::{self, Account, AccountUpdate, Category, NewAccount, NewCategory, NewRule, NewTransaction, Tag, Transaction};
+use crate::store::{self, Account, AccountUpdate, Category, NewAccount, NewCategory, NewTransaction, Tag, Transaction};
 use rusqlite::Connection;
 use std::sync::{Mutex, MutexGuard};
 use tauri::State;
@@ -114,10 +115,55 @@ pub fn set_transaction_tags(db: State<Db>, transaction_id: i64, tag_ids: Vec<i64
     store::set_transaction_tags(&mut *conn, owner, transaction_id, &tag_ids).map_err(err)
 }
 
+// ---------- Платежи ----------
+// Экран «Платежи» работает только с этими командами. Статус платежа меняет
+// `set_transaction_status` (выше): единственная функция смены статуса.
+
+/// Создаёт одиночный платёж или всю серию (если есть `recurrence`).
 #[tauri::command]
-pub fn create_rule(db: State<Db>, rule: NewRule) -> Res<i64> {
+pub fn create_payment(db: State<Db>, payment: NewPayment) -> Res<CreatedPayments> {
+    let (mut conn, owner) = scoped(&db)?;
+    payments::create_payment(&mut *conn, owner, &payment).map_err(err)
+}
+
+/// Платежи за период по месяцам (с итогами) и правила серий. Фильтры: счёт, тип, статус.
+#[tauri::command]
+pub fn list_payments(db: State<Db>, filter: PaymentFilter) -> Res<PaymentList> {
     let (conn, owner) = scoped(&db)?;
-    store::create_rule(&*conn, owner, &rule).map_err(err)
+    payments::list_payments(&*conn, owner, &filter).map_err(err)
+}
+
+#[tauri::command]
+pub fn get_payment(db: State<Db>, id: i64) -> Res<Transaction> {
+    let (conn, owner) = scoped(&db)?;
+    payments::get_payment(&*conn, owner, id).map_err(err)
+}
+
+/// Правило повторения серии по `rule_id` платежа.
+#[tauri::command]
+pub fn get_recurrence(db: State<Db>, rule_id: i64) -> Res<RecurrenceInfo> {
+    let (conn, owner) = scoped(&db)?;
+    payments::get_recurrence(&*conn, owner, rule_id).map_err(err)
+}
+
+/// Сколько платежей даст повторяемость и на какие даты. Ничего не пишет.
+#[tauri::command]
+pub fn preview_recurrence(recurrence: RecurrenceSpec) -> Res<RecurrencePreview> {
+    payments::preview_recurrence(&recurrence).map_err(err)
+}
+
+/// Правка: `scope` = "this" (только этот) или "following" (этот и все следующие).
+#[tauri::command]
+pub fn update_payment(db: State<Db>, id: i64, patch: PaymentPatch, scope: Scope) -> Res<UpdateResult> {
+    let (mut conn, owner) = scoped(&db)?;
+    payments::update_payment(&mut *conn, owner, id, &patch, scope).map_err(err)
+}
+
+/// Удаление: `scope` как в `update_payment`. Возвращает число удалённых платежей.
+#[tauri::command]
+pub fn delete_payment(db: State<Db>, id: i64, scope: Scope) -> Res<usize> {
+    let (mut conn, owner) = scoped(&db)?;
+    payments::delete_payment(&mut *conn, owner, id, scope).map_err(err)
 }
 
 #[tauri::command]

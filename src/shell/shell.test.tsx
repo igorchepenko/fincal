@@ -46,11 +46,11 @@ describe("окно", () => {
   it("показывает сайдбар, активный раздел и пустое состояние", () => {
     const html = renderToString(
       <ProfileProvider api={noApi}>
-        <Shell version="0.0.0" initialScreen="payments" />
+        <Shell version="0.0.0" initialScreen="calendar" />
       </ProfileProvider>,
     );
     for (const s of screens) expect(html).toContain(s.title);
-    expect(html).toContain("Платежей пока нет");
+    expect(html).toContain("В календаре пока пусто");
     expect(html).toContain('aria-current="page"');
   });
 

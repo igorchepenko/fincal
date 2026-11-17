@@ -10,6 +10,7 @@ pub const MIGRATIONS: &[(&str, &str)] = &[
     ("0002_data_model", include_str!("../migrations/0002_data_model.sql")),
     ("0003_profiles", include_str!("../migrations/0003_profiles.sql")),
     ("0004_accounts", include_str!("../migrations/0004_accounts.sql")),
+    ("0005_payments", include_str!("../migrations/0005_payments.sql")),
 ];
 
 /// Открывает файл базы и включает проверку внешних ключей.
