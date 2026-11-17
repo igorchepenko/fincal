@@ -1,9 +1,9 @@
-export type ScreenId = "calendar" | "payments" | "accounts" | "settings";
+export type ScreenId = "calendar" | "payments" | "accounts";
 
 export interface ScreenDef {
   id: ScreenId;
   title: string;
-  icon: "calendar" | "list" | "wallet" | "gear";
+  icon: "calendar" | "list" | "wallet";
   emptyTitle: string;
   emptyText: string;
 }
@@ -29,13 +29,6 @@ export const screens: ScreenDef[] = [
     icon: "wallet",
     emptyTitle: "Счетов пока нет",
     emptyText: "Здесь будут твои счета и остатки на них в рублях.",
-  },
-  {
-    id: "settings",
-    title: "Настройки",
-    icon: "gear",
-    emptyTitle: "Настроек пока нет",
-    emptyText: "Здесь появятся параметры приложения.",
   },
 ];
 
