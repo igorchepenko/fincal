@@ -182,3 +182,9 @@ button.rad{text-align:left;width:100%}
 .pay-sortbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .pay-sortbar .btn .ic{width:14px;height:14px}
 .pay-focus{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-radius:var(--r-md);background:var(--accent-soft);color:var(--accent-text);font-weight:600}
+
+/* Бюджет */
+.bud{display:flex;flex-direction:column;gap:14px;min-width:0}
+.bud-kpis{gap:28px}
+.bud-k .amt.big{text-align:left}
+.bud-chart .bud-tip{pointer-events:none;z-index:5}

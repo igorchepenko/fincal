@@ -3,6 +3,7 @@ import { Icon } from "./Icon";
 import { defaultScreen, screens, type ScreenDef, type ScreenId } from "./screens";
 import { AccountsScreen } from "../accounts/AccountsScreen";
 import { PaymentsScreen } from "../payments/PaymentsScreen";
+import { BudgetScreen } from "../budget/BudgetScreen";
 import { EventsScreen, type EventFocus } from "../events/EventsScreen";
 import { ProfileSwitcher } from "../profiles/ProfileSwitcher";
 import { useProfiles } from "../profiles/ProfileContext";
@@ -163,6 +164,8 @@ export function Shell({
             />
           ) : screen.id === "payments" ? (
             <PaymentsScreen key={focus?.key ?? "all"} focus={focus} />
+          ) : screen.id === "budget" ? (
+            <BudgetScreen />
           ) : (
             <EmptyScreen screen={screen} />
           ))}
