@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { defaultScreen, screens, type ScreenDef, type ScreenId } from "./screens";
 import { AccountsScreen } from "../accounts/AccountsScreen";
+import { PaymentsScreen } from "../payments/PaymentsScreen";
 import { ProfileSwitcher } from "../profiles/ProfileSwitcher";
 import { useProfiles } from "../profiles/ProfileContext";
 import { applyTheme, loadTheme, saveTheme, themeModes, type ThemeMode } from "./theme";
@@ -88,7 +89,8 @@ export function Shell({
         <h1 id="screen-title" className="shell-title">
           {screen.title}
         </h1>
-        {screenContent[screen.id] ?? (screen.id === "accounts" ? <AccountsScreen /> : <EmptyScreen screen={screen} />)}
+        {screenContent[screen.id] ??
+          (screen.id === "accounts" ? <AccountsScreen /> : screen.id === "payments" ? <PaymentsScreen /> : <EmptyScreen screen={screen} />)}
       </main>
     </div>
   );
