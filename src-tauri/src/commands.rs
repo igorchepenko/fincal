@@ -15,7 +15,7 @@ fn err(e: store::StoreError) -> String {
 
 macro_rules! conn {
     ($db:expr) => {
-        $db.0.lock().map_err(|_| "база занята".to_string())?
+        $db.inner().0.lock().map_err(|_| "база занята".to_string())?
     };
 }
 
