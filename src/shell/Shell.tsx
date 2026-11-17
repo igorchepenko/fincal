@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
 import { defaultScreen, screens, type ScreenDef, type ScreenId } from "./screens";
 import { applyTheme, loadTheme, saveTheme, themeModes, type ThemeMode } from "./theme";
@@ -35,7 +35,16 @@ function EmptyScreen({ screen }: { screen: ScreenDef }) {
   );
 }
 
-export function Shell({ version, initialScreen = defaultScreen }: { version: string; initialScreen?: ScreenId }) {
+export function Shell({
+  version,
+  initialScreen = defaultScreen,
+  screenContent = {},
+}: {
+  version: string;
+  initialScreen?: ScreenId;
+  /** Содержимое готовых разделов; остальные показывают пустое состояние. */
+  screenContent?: Partial<Record<ScreenId, ReactNode>>;
+}) {
   const [current, setCurrent] = useState<ScreenId>(initialScreen);
   const [mode, setMode] = useState<ThemeMode>(loadTheme);
 
@@ -73,7 +82,7 @@ export function Shell({ version, initialScreen = defaultScreen }: { version: str
         <h1 id="screen-title" className="shell-title">
           {screen.title}
         </h1>
-        <EmptyScreen screen={screen} />
+        {screenContent[screen.id] ?? <EmptyScreen screen={screen} />}
       </main>
     </div>
   );
