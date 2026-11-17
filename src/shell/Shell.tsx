@@ -1,0 +1,80 @@
+import { useEffect, useState } from "react";
+import { Icon } from "./Icon";
+import { defaultScreen, screens, type ScreenDef, type ScreenId } from "./screens";
+import { applyTheme, loadTheme, saveTheme, themeModes, type ThemeMode } from "./theme";
+
+function ThemeSwitch({ mode, onChange }: { mode: ThemeMode; onChange: (m: ThemeMode) => void }) {
+  return (
+    <div className="seg" role="group" aria-label="Тема оформления">
+      {themeModes.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          className={t.id === mode ? "on" : ""}
+          aria-pressed={t.id === mode}
+          onClick={() => onChange(t.id)}
+        >
+          {t.title}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function EmptyScreen({ screen }: { screen: ScreenDef }) {
+  return (
+    <section className="card shell-empty" aria-labelledby="screen-title">
+      <div className="empty">
+        <div className="ei">
+          <Icon name={screen.icon} />
+        </div>
+        <b>{screen.emptyTitle}</b>
+        <p>{screen.emptyText}</p>
+      </div>
+    </section>
+  );
+}
+
+export function Shell({ version, initialScreen = defaultScreen }: { version: string; initialScreen?: ScreenId }) {
+  const [current, setCurrent] = useState<ScreenId>(initialScreen);
+  const [mode, setMode] = useState<ThemeMode>(loadTheme);
+
+  useEffect(() => {
+    applyTheme(mode);
+    saveTheme(mode);
+  }, [mode]);
+
+  const screen = screens.find((s) => s.id === current) ?? screens[0];
+
+  return (
+    <div className="shell">
+      <aside className="shell-sb">
+        <div className="shell-brand">FinCal</div>
+        <nav aria-label="Разделы">
+          {screens.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={"nav" + (s.id === current ? " on" : "")}
+              aria-current={s.id === current ? "page" : undefined}
+              onClick={() => setCurrent(s.id)}
+            >
+              <Icon name={s.icon} />
+              <span className="nm">{s.title}</span>
+            </button>
+          ))}
+        </nav>
+        <div className="shell-foot">
+          <ThemeSwitch mode={mode} onChange={setMode} />
+          <span className="shell-ver mono">Версия {version}</span>
+        </div>
+      </aside>
+      <main className="shell-main">
+        <h1 id="screen-title" className="shell-title">
+          {screen.title}
+        </h1>
+        <EmptyScreen screen={screen} />
+      </main>
+    </div>
+  );
+}
