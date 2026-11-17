@@ -54,3 +54,15 @@ textarea.inp:focus{background:var(--surface);box-shadow:0 0 0 1.5px var(--field-
 .acc-form{gap:12px}
 .acc-form .dlg-foot{position:sticky;bottom:-20px;margin-bottom:-20px;padding-bottom:20px;background:var(--surface);z-index:1}
 button.sw{border:0;padding:0;cursor:pointer}
+
+/* Блокировка */
+.lock-screen{height:100vh;display:grid;place-items:center;background:var(--app);padding:28px}
+.lock-card{width:min(420px,100%)}
+.lock-err{margin:0;color:var(--danger-text)}
+.lock-set{max-width:640px}
+.lock-sw{text-align:left}
+.lock-sw:disabled{opacity:.5}
+.lock-hint{margin:0;color:var(--text-faint)}
+.lock-when .lbl{width:140px}
+.lock-min{width:110px;height:var(--control)}
+.lock-min input{width:100%;min-width:0;border:0;background:none;outline:none;font:inherit;color:inherit;padding:0}

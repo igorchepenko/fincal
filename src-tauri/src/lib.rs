@@ -1,6 +1,9 @@
+mod auth;
 mod commands;
 mod db;
 mod profiles;
+mod lock;
+mod lock_commands;
 mod store;
 
 use tauri::Manager;
@@ -12,7 +15,11 @@ pub fn run() {
             std::fs::create_dir_all(&dir)?;
             let mut conn = db::open(&dir.join("fincal.db"))?;
             db::migrate(&mut conn)?;
+            // Настройки блокировки читаем до показа окна: если она включена, окно стартует закрытым.
+            let lock_settings = lock::LockSettings::load(&conn).unwrap_or_default();
+            app.manage(lock::Lock::new(lock_settings, auth::system()));
             app.manage(commands::Db(std::sync::Mutex::new(conn)));
+            lock_commands::start_watcher(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -39,6 +46,9 @@ pub fn run() {
             commands::rename_profile,
             commands::delete_profile,
             commands::switch_profile,
+            lock_commands::lock_status,
+            lock_commands::unlock,
+            lock_commands::set_lock_settings,
         ])
         .run(tauri::generate_context!())
         .expect("ошибка запуска FinCal");
