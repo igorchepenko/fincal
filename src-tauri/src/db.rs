@@ -5,10 +5,17 @@
 
 use rusqlite::Connection;
 
-pub const MIGRATIONS: &[(&str, &str)] = &[(
-    "0001_init",
-    include_str!("../migrations/0001_init.sql"),
-)];
+pub const MIGRATIONS: &[(&str, &str)] = &[
+    ("0001_init", include_str!("../migrations/0001_init.sql")),
+    ("0002_data_model", include_str!("../migrations/0002_data_model.sql")),
+];
+
+/// Открывает файл базы и включает проверку внешних ключей.
+pub fn open(path: &std::path::Path) -> rusqlite::Result<Connection> {
+    let conn = Connection::open(path)?;
+    conn.pragma_update(None, "foreign_keys", true)?;
+    Ok(conn)
+}
 
 /// Применяет все ещё не применённые миграции, каждую в своей транзакции.
 pub fn migrate(conn: &mut Connection) -> rusqlite::Result<u32> {
