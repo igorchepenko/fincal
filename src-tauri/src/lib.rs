@@ -44,6 +44,7 @@ pub fn run() {
             commands::set_transaction_tags,
             commands::create_payment,
             commands::list_payments,
+            commands::list_events,
             commands::get_payment,
             commands::get_recurrence,
             commands::preview_recurrence,

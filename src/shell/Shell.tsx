@@ -3,6 +3,7 @@ import { Icon } from "./Icon";
 import { defaultScreen, screens, type ScreenDef, type ScreenId } from "./screens";
 import { AccountsScreen } from "../accounts/AccountsScreen";
 import { PaymentsScreen } from "../payments/PaymentsScreen";
+import { EventsScreen, type EventFocus } from "../events/EventsScreen";
 import { ProfileSwitcher } from "../profiles/ProfileSwitcher";
 import { useProfiles } from "../profiles/ProfileContext";
 import { SettingsDialog, type SettingsSection } from "../settings/SettingsDialog";
@@ -59,6 +60,8 @@ export function Shell({
   const [mode, setMode] = useState<ThemeMode>(loadTheme);
   const [order, setOrder] = useState<ScreenId[]>(initialOrder);
   const [settings, setSettings] = useState<SettingsSection | null>(initialSettings);
+  // Фильтр «платежи одного события»: ставится кнопкой на карточке события, живёт, пока открыт раздел «Платежи».
+  const [focus, setFocus] = useState<EventFocus | null>(null);
   const { current: profile } = useProfiles();
 
   useEffect(() => {
@@ -122,7 +125,10 @@ export function Shell({
               className={"nav" + (s.id === current ? " on" : "")}
               aria-current={s.id === current ? "page" : undefined}
               title={i < 9 ? `${s.title} ⌘${i + 1}` : s.title}
-              onClick={() => setCurrent(s.id)}
+              onClick={() => {
+                setFocus(null);
+                setCurrent(s.id);
+              }}
             >
               <Icon name={s.icon} />
               <span className="nm">{s.title}</span>
@@ -146,7 +152,20 @@ export function Shell({
           {screen.title}
         </h1>
         {screenContent[screen.id] ??
-          (screen.id === "accounts" ? <AccountsScreen /> : screen.id === "payments" ? <PaymentsScreen /> : <EmptyScreen screen={screen} />)}
+          (screen.id === "accounts" ? (
+            <AccountsScreen />
+          ) : screen.id === "events" ? (
+            <EventsScreen
+              onOpenPayments={(f) => {
+                setFocus(f);
+                setCurrent("payments");
+              }}
+            />
+          ) : screen.id === "payments" ? (
+            <PaymentsScreen key={focus?.key ?? "all"} focus={focus} />
+          ) : (
+            <EmptyScreen screen={screen} />
+          ))}
       </main>
       {settings && (
         <SettingsDialog

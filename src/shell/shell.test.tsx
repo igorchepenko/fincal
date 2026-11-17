@@ -7,8 +7,8 @@ import { screens } from "./screens";
 import { parseTheme, themeAttribute } from "./theme";
 
 describe("экраны", () => {
-  it("три раздела по умолчанию, «Настройки» вынесены из списка", () => {
-    expect(screens.map((s) => s.title)).toEqual(["Календарь", "Платежи", "Счета"]);
+  it("четыре раздела по умолчанию, «Настройки» вынесены из списка", () => {
+    expect(screens.map((s) => s.title)).toEqual(["Календарь", "События", "Платежи", "Счета"]);
   });
 
   it("у каждого экрана есть пустое состояние", () => {

@@ -158,3 +158,27 @@ button.rad{text-align:left;width:100%}
 .menu-name{flex:1;min-width:0;font-weight:500;color:var(--text-strong)}
 .menu-key{font-size:11px;color:var(--text-faint);min-width:24px;text-align:right}
 .menu-item .btn.sm{width:var(--control-sm);padding:0}
+
+/* События: карточки, шапка с поиском и фильтрами */
+.ev-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ev-grow{flex:1}
+.ev-search{position:relative;display:flex;align-items:center;min-width:220px;flex:0 1 320px}
+.ev-search .ic{position:absolute;left:12px;width:16px;height:16px;color:var(--text-faint);pointer-events:none}
+.ev-search input.inp{padding-left:36px;width:100%}
+.ev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+.card.ev-card{gap:10px;padding:16px 18px}
+.card.ev-card.ev-done{opacity:.72}
+.ev-top{display:flex;align-items:center;gap:12px}
+.ev-name{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ev-name b{color:var(--text-strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-name small{color:var(--text-faint);font-size:12px}
+.ev-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.ev-meta .chip{max-width:100%}
+.ev-meta .chip .ic{width:14px;height:14px}
+.ev-prog{color:var(--text);font-size:13px}
+.ev-next{color:var(--text-faint);font-size:12px}
+.ev-note{overflow-wrap:anywhere}
+.ev-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.pay-sortbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pay-sortbar .btn .ic{width:14px;height:14px}
+.pay-focus{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-radius:var(--r-md);background:var(--accent-soft);color:var(--accent-text);font-weight:600}

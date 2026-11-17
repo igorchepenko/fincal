@@ -17,21 +17,21 @@ describe("порядок меню", () => {
   });
 
   it("сохранённый порядок читается как есть", () => {
-    expect(parseMenuOrder('["accounts","calendar","payments"]')).toEqual(["accounts", "calendar", "payments"]);
+    expect(parseMenuOrder('["accounts","calendar","payments","events"]')).toEqual(["accounts", "calendar", "payments", "events"]);
   });
 
   it("мусор, неизвестные id и повторы отбрасываются", () => {
     expect(parseMenuOrder("{нет")).toEqual(defaultMenuOrder);
     expect(parseMenuOrder('"payments"')).toEqual(defaultMenuOrder);
-    expect(parseMenuOrder('["x","payments","payments",7]')).toEqual(["payments", "calendar", "accounts"]);
+    expect(parseMenuOrder('["x","payments","payments",7]')).toEqual(["payments", "calendar", "events", "accounts"]);
   });
 
   it("новые разделы, которых нет в сохранённом списке, встают в конец", () => {
-    expect(parseMenuOrder('["accounts"]')).toEqual(["accounts", "calendar", "payments"]);
+    expect(parseMenuOrder('["accounts"]')).toEqual(["accounts", "calendar", "events", "payments"]);
   });
 
   it("запись и чтение возвращают тот же порядок", () => {
-    const order = ["payments", "accounts", "calendar"] as const;
+    const order = ["payments", "accounts", "events", "calendar"] as const;
     expect(parseMenuOrder(serializeMenuOrder([...order]))).toEqual([...order]);
   });
 
