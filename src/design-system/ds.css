@@ -1,0 +1,148 @@
+/* myDS: CSS компонентов. Работает поверх tokens.css, свои цвета не задаёт. */
+/* ============ Inbox DS: базовые стили и компоненты (токены подставляет build.py) ============ */
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background-color:var(--canvas);color:var(--text);font:13px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+.cage{background-image:linear-gradient(var(--cage) 1px,transparent 1px),linear-gradient(90deg,var(--cage) 1px,transparent 1px);background-size:24px 24px;background-position:-1px -1px}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:default}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---- кнопка ---- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:var(--control);padding:0 14px;border-radius:var(--r-md);background:var(--surface);color:var(--text-strong);font:600 13px/1 var(--font);box-shadow:0 0 0 1px var(--line-strong),var(--sh-control);white-space:nowrap;flex:none}
+.btn:hover,.btn.hov{background:color-mix(in srgb,var(--text-strong) 5%,var(--surface))}
+.btn.primary{background:var(--accent);color:var(--on-accent);box-shadow:var(--sh-accent)}
+.btn.primary:hover,.btn.primary.hov{background:var(--accent-2)}
+.btn.ghost{background:transparent;box-shadow:none;color:var(--text)}
+.btn.ghost:hover,.btn.ghost.hov{background:var(--sel)}
+.btn.danger{background:var(--danger-soft);color:var(--danger-text);box-shadow:none}
+.btn.sm{height:var(--control-sm);padding:0 10px;font-size:12px;border-radius:8px}
+.btn.lg{height:var(--control-lg);padding:0 18px;font-size:14px;border-radius:12px}
+.btn.icon{width:var(--control);padding:0}
+.btn.icon.sm{width:var(--control-sm)}
+.btn.dis{opacity:.45}
+.btn.foc{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- чекбокс (выполнено = зелёный) ---- */
+.cb{width:18px;height:18px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--icon-faint);display:grid;place-items:center;flex:none;color:var(--on-success)}
+.cb .ic{width:12px;height:12px;stroke-width:2.2;opacity:0}
+.cb.hov{box-shadow:inset 0 0 0 1.5px var(--accent)}
+.cb.late{box-shadow:inset 0 0 0 1.5px var(--danger)}
+.cb.on{background:var(--success);box-shadow:none}
+.cb.on .ic{opacity:1}
+
+/* ---- пилюля-сегмент ---- */
+.seg{display:inline-flex;padding:2px;gap:2px;border-radius:999px;background:var(--well);box-shadow:inset 0 0 0 1px var(--line);flex:none}
+.seg button{height:var(--seg-h);padding:0 12px;border-radius:999px;color:var(--text-faint);font:600 12px/1 var(--font);white-space:nowrap}
+.seg button.on{background:var(--raised);color:var(--text-strong);box-shadow:0 0 0 1px var(--line),var(--sh-control)}
+.seg button .ic{width:14px;height:14px}
+
+/* ---- переключатель ---- */
+.sw{width:36px;height:20px;border-radius:999px;background:var(--well);box-shadow:inset 0 0 0 1px var(--line-strong);position:relative;flex:none;display:inline-block}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--sw-knob);box-shadow:0 1px 2px rgba(0,0,0,.28)}
+.sw.on{background:var(--accent);box-shadow:none}
+.sw.on::after{left:18px;background:#fff}
+.sw-row{display:flex;align-items:center;gap:12px;color:var(--text-strong);font-weight:500}
+
+/* ---- степпер ---- */
+.step{display:inline-flex;align-items:center;height:32px;padding:3px;border-radius:999px;background:var(--well);box-shadow:inset 0 0 0 1px var(--line);flex:none}
+.step b{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--raised);box-shadow:0 0 0 1px var(--line),var(--sh-control);color:var(--text-strong)}
+.step b.dis{opacity:.4}
+.step span{min-width:56px;text-align:center;font:600 13px/1 var(--mono);color:var(--text-strong)}
+
+/* ---- поле поиска ---- */
+.search{display:flex;align-items:center;gap:8px;height:var(--control);padding:0 8px 0 10px;border-radius:var(--r-md);background:var(--well);box-shadow:inset 0 0 0 1px var(--line);color:var(--text-faint);width:260px;max-width:100%;min-width:0}
+.search .ph-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search.foc{background:var(--surface);color:var(--text-strong);box-shadow:0 0 0 1.5px var(--accent),0 0 0 4px var(--accent-soft)}
+.kbd{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 5px;border-radius:6px;background:var(--well);box-shadow:inset 0 0 0 1px var(--line),0 1px 0 var(--line);font:500 11px/1 var(--mono);color:var(--text-faint)}
+
+/* ---- строка задачи ---- */
+.group{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--sh-card);padding:4px;display:flex;flex-direction:column;min-width:0}
+.trow{display:flex;align-items:center;gap:12px;height:var(--row);padding:0 12px;border-radius:var(--r-md);position:relative;min-width:0}
+.trow+.trow::before{content:"";position:absolute;left:42px;right:12px;top:-1px;height:1px;background:var(--line)}
+.trow.hov::before,.trow.hov+.trow::before,.trow.sel::before,.trow.sel+.trow::before{opacity:0}
+.trow.hov{background:var(--sel)}
+.trow.sel{background:var(--accent-soft)}
+.trow .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;color:var(--text-strong)}
+.trow .time{font:500 12px/1 var(--mono);color:var(--text-faint);font-variant-numeric:tabular-nums;flex:none}
+.trow .time.late{color:var(--danger-text)}
+.trow.done .t{color:var(--text-faint);text-decoration:line-through;text-decoration-color:var(--icon-faint)}
+.trow.dense{height:var(--row-dense)}
+
+/* ---- чип ---- */
+.chip{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;font:600 12px/1 var(--font);color:var(--text);background:var(--well);box-shadow:inset 0 0 0 1px var(--line);white-space:nowrap;flex:none}
+.chip .ic{width:12px;height:12px}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--c);flex:none}
+.chip.sp{background:color-mix(in srgb,var(--c) 14%,var(--surface));box-shadow:none;color:var(--text-strong)}
+.chip.accent{background:var(--accent-soft);color:var(--accent-text);box-shadow:none}
+.chip.ok{background:var(--success-soft);color:var(--success-text);box-shadow:none}
+.chip.bad{background:var(--danger-soft);color:var(--danger-text);box-shadow:none}
+.chip.warn{background:var(--warning-soft);color:var(--warning-text);box-shadow:none}
+.chip.x{padding-right:5px}
+.chip.x .ic{color:var(--text-faint)}
+.chip.dash{background:transparent;box-shadow:inset 0 0 0 1px var(--line-strong);color:var(--text-faint);border-radius:999px}
+.chip.lg{height:28px;padding:0 12px;font-size:13px}
+
+/* ---- карточка ---- */
+.card{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--sh-card);padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0;color:var(--text)}
+.card h4{margin:0;font:600 12px/1.3 var(--font);color:var(--text-faint)}
+.card .big{font:700 28px/1.1 var(--font);letter-spacing:-.02em;color:var(--text-strong);font-variant-numeric:tabular-nums}
+.card.inverse{background:var(--inv-bg);color:var(--inv-text);box-shadow:none}
+.card.inverse h4{color:color-mix(in srgb,var(--inv-text) 62%,transparent)}
+.card.inverse .big{color:var(--inv-text)}
+.bar{height:6px;border-radius:999px;background:var(--well);box-shadow:inset 0 0 0 1px var(--line);overflow:hidden}
+.bar b{display:block;height:100%;border-radius:999px;background:var(--accent)}
+
+/* ---- пункт меню ---- */
+.nav{display:flex;align-items:center;gap:10px;height:32px;padding:0 10px;border-radius:var(--r-md);color:var(--text);font-weight:500;min-width:0}
+.nav .ic{color:var(--icon)}
+.nav .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav .n{font:500 11px/1 var(--mono);color:var(--text-faint)}
+.nav.on{background:var(--sel);color:var(--text-strong);font-weight:600}
+.nav.on .ic{color:var(--accent)}
+.nav i.dot{width:8px;height:8px;border-radius:50%;background:var(--c);margin:0 4px;flex:none}
+.nav-h{font:600 11px/1 var(--font);color:var(--text-faint);padding:14px 10px 6px}
+
+/* ---- окно ---- */
+.win{--sbw:220px;--pw:0px;position:relative;display:grid;grid-template-columns:var(--sbw) minmax(0,1fr) var(--pw);background:var(--app);border-radius:var(--r-window);box-shadow:var(--sh-window);overflow:hidden;color:var(--text);font:13px/1.45 var(--font)}
+.win .tl{position:absolute;left:16px;top:13px;display:flex;gap:8px;z-index:3}
+.win .tl i{width:12px;height:12px;border-radius:50%;display:block}
+.win .tl i:nth-child(1){background:#FF5F57}.win .tl i:nth-child(2){background:#FEBC2E}.win .tl i:nth-child(3){background:#28C840}
+.win .sb{background:var(--chrome);box-shadow:inset -1px 0 0 var(--line);padding:46px 10px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.win .mn{padding:28px 28px 0;display:flex;flex-direction:column;gap:14px;min-width:0}
+.win .pn{background:var(--surface);box-shadow:inset 1px 0 0 var(--line);min-width:0}
+
+/* ---- поп-ап быстрого ввода ---- */
+.qi{width:560px;max-width:100%;background:var(--surface);border-radius:var(--r-card);box-shadow:var(--sh-float);padding:16px;display:flex;flex-direction:column;gap:12px;color:var(--text);min-width:0}
+.qi .q-title{font:600 17px/1.3 var(--font);color:var(--text-strong);min-height:24px}
+.qi .q-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.qi .q-foot{display:flex;align-items:center;gap:8px;padding-top:12px;box-shadow:0 -1px 0 var(--line);color:var(--text-faint);font-size:12px}
+.caret{display:inline-block;width:1.5px;height:1.15em;background:var(--accent);vertical-align:-.2em;margin-left:1px}
+
+/* ---- панель задачи ---- */
+.panel{width:340px;max-width:100%;background:var(--surface);border-radius:var(--r-card);box-shadow:var(--sh-card);padding:16px;display:flex;flex-direction:column;gap:6px;color:var(--text);min-width:0}
+.panel.flat{border-radius:0;box-shadow:none;width:auto;max-width:none}
+.panel .p-head{display:flex;gap:12px;align-items:flex-start;padding-bottom:10px}
+.panel .p-title{font:600 17px/1.3 var(--font);color:var(--text-strong);letter-spacing:-.005em}
+.fld{display:flex;align-items:center;gap:10px;min-height:38px;padding:0 2px;min-width:0}
+.fld+.fld,.p-sec{box-shadow:0 -1px 0 var(--line)}
+.fld .lbl{width:92px;display:flex;align-items:center;gap:8px;color:var(--text-faint);flex:none}
+.fld .val{flex:1;min-width:0;color:var(--text-strong);font-weight:500;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.p-sec{padding-top:12px;margin-top:6px;display:flex;flex-direction:column;gap:2px}
+.p-sec h5{margin:0 0 4px;font:600 12px/1.3 var(--font);color:var(--text-faint)}
+.fld .seg button{padding:0 7px}
+.chk{display:flex;align-items:center;gap:10px;min-height:32px}
+
+/* ---- тост и подсказка ---- */
+.toast{display:inline-flex;align-items:center;gap:10px;height:40px;padding:0 6px 0 12px;border-radius:14px;background:var(--inv-bg);color:var(--inv-text);box-shadow:var(--sh-float);font:500 13px/1 var(--font);white-space:nowrap;max-width:100%}
+.toast .ic{color:var(--inv-ok)}
+.toast a{font-weight:600;color:var(--inv-link);padding:7px 10px;border-radius:9px;text-decoration:none}
+.tip{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 5px 0 10px;border-radius:9px;background:var(--inv-bg);color:var(--inv-text);font:500 12px/1 var(--font);box-shadow:var(--sh-float);white-space:nowrap}
+.tip .kbd{background:color-mix(in srgb,var(--inv-text) 16%,transparent);box-shadow:none;color:var(--inv-text);min-width:20px}
+
+/* ---- плейсхолдеры кадра: текст прячется в серую полоску, пока не включён режим «весь текст» ---- */
+.tx.ph{display:inline-block;vertical-align:middle;height:.62em;line-height:.62em;overflow:hidden;color:transparent!important;-webkit-text-fill-color:transparent;background:var(--ink-2);border-radius:4px;text-decoration:none!important;user-select:none;max-width:100%}
+.full .tx.ph{display:inline;height:auto;line-height:inherit;overflow:visible;color:inherit!important;-webkit-text-fill-color:currentColor;background:none;user-select:auto}
+.full .tx.ph.faint{color:var(--text-faint)!important}
+.tx.ph.i3{background:var(--ink-1)}
