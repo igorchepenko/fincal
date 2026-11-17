@@ -59,6 +59,27 @@ export interface PaymentFilter {
   account_id?: number;
   direction?: Direction;
   status?: PaymentStatus;
+  /** Только платежи одной серии. */
+  rule_id?: number;
+  /** Только один платёж (разовое событие). */
+  payment_id?: number;
+}
+
+/** Событие: серия или разовый платёж, как его отдаёт Rust (`list_events`). */
+export interface EventItem {
+  /** `r<id правила>` у серии, `t<id платежа>` у разового платежа. */
+  key: string;
+  rule: RecurrenceInfo | null;
+  /** Платёж, по которому событие показывается и правится: ближайший будущий запланированный, иначе самый ранний запланированный, иначе самый поздний. */
+  representative: Payment;
+  total: number;
+  planned: number;
+  completed: number;
+  skipped: number;
+  first_on: string;
+  last_on: string;
+  /** Ближайший запланированный платёж с сегодняшнего дня и позже. */
+  next_on: string | null;
 }
 
 /** Повторяемость в запросе на создание и правку. */
@@ -101,7 +122,14 @@ export interface RecurrencePreview {
 
 /** Операции с платежами текущего профиля. В тестах подставляется заглушка. */
 export interface PaymentApi {
+  /**
+   * Платежи за период [from, to] по месяцам с итогами; фильтры: счёт, тип, статус, серия, один платёж.
+   * Для раздела «Бюджет»: период можно брать любой длины (400 дней это ограничение экрана, не базы),
+   * `PaymentList.months[].totals` уже считает приходы и расходы без пропущенных.
+   */
   list(filter: PaymentFilter): Promise<PaymentList>;
+  /** Все события профиля (серии и разовые платежи), сначала ближайшие. `today`: ГГГГ-ММ-ДД. */
+  listEvents(today: string): Promise<EventItem[]>;
   create(p: NewPayment): Promise<{ rule_id: number | null; count: number; first_id: number }>;
   update(id: number, patch: PaymentPatch, scope: Scope): Promise<{ changed: number; new_rule_id: number | null }>;
   remove(id: number, scope: Scope): Promise<number>;
@@ -112,6 +140,7 @@ export interface PaymentApi {
 
 export const tauriPaymentApi: PaymentApi = {
   list: (filter) => call<PaymentList>("list_payments", { filter }),
+  listEvents: (today) => call<EventItem[]>("list_events", { today }),
   create: (payment) => call("create_payment", { payment }),
   update: (id, patch, scope) => call("update_payment", { id, patch, scope }),
   remove: (id, scope) => call<number>("delete_payment", { id, scope }),

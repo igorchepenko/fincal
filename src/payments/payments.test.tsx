@@ -1,7 +1,7 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Account } from "../accounts/api";
-import type { MonthGroup, Payment, PaymentList, RecurrenceInfo, RecurrenceSpec } from "./api";
+import type { MonthGroup, Payment, RecurrenceInfo, RecurrenceSpec } from "./api";
 import { addMonths, diffDays, formatDay, isValidDay, monthEnd, monthTitle, parseIso, weekdayCode } from "./dates";
 import {
   buildRecurrence,
@@ -15,8 +15,10 @@ import {
   type PaymentForm,
 } from "./form";
 import { describeRule, effectiveKop, isOverdue, monthNet, signedAmount, signedKop, sumNet } from "./model";
-import { MonthCard, noFilters, periodError, periodFor, periodTitle, ROWS_PER_MONTH, shiftPeriod, SummaryCard, toBackendFilter, EmptyPayments } from "./PaymentsScreen";
-import { CompleteDialog, DeleteDialog, PaymentDialog, previewText, ScopeStep } from "./PaymentDialog";
+import { MonthCard, noFilters, periodForFocus, SearchSortBar, periodError, periodFor, periodTitle, ROWS_PER_MONTH, shiftPeriod, SummaryCard, toBackendFilter, EmptyPayments } from "./PaymentsScreen";
+import { CompleteDialog, DeleteDialog, PaymentDialog, PaymentEditDialog, previewText, ScopeStep } from "./PaymentDialog";
+import { groupMonths, totalsOf } from "./model";
+import { defaultSort, matchesQuery, parseSort, sortHint, sortPayments } from "./sort";
 import { tauriPaymentApi } from "./api";
 
 const NB = "\u00a0";
@@ -64,7 +66,7 @@ const rule: RecurrenceInfo = {
 };
 
 const noopApi = tauriPaymentApi;
-const noopActions = { onToggleStatus() {}, onComplete() {}, onSkip() {}, onRestore() {}, onEdit() {}, onDelete() {} };
+const noopActions = { onToggleStatus() {}, onComplete() {}, onSkip() {}, onRestore() {}, onEdit() {}, onEditEvent() {}, onDelete() {} };
 
 describe("даты", () => {
   it("настоящие и ненастоящие дни", () => {
@@ -317,13 +319,16 @@ describe("экран: отрисовка", () => {
   });
 
   it("итог периода и пустые состояния", () => {
-    const list: PaymentList = { months: [group([pay({ id: 1 })])], rules: [], total_count: 1 };
-    const html = renderToString(<SummaryCard list={list} period={periodFor("month", "2030-03-01")} onAdd={() => {}} selecting={false} onToggleSelect={() => {}} />);
+    const list = [pay({ id: 1, direction: "income", amount_kop: 5_000_000 }), pay({ id: 2 })];
+    const html = renderToString(<SummaryCard payments={list} period={periodFor("month", "2030-03-01")} selecting={false} onToggleSelect={() => {}} />);
     expect(html).toContain(`+50${NB}000${NB}₽`);
     expect(html).toContain(`${MINUS}1${NB}500${NB}₽`);
-    expect(html).toContain("Новый платёж");
-    expect(renderToString(<EmptyPayments filtered={false} hasAccounts={false} onAdd={() => {}} />)).toContain("заведи счёт");
-    expect(renderToString(<EmptyPayments filtered hasAccounts onAdd={() => {}} />)).toContain("Ничего не найдено");
+    // Платежи создаются в «Событиях», кнопки добавления здесь нет.
+    expect(html).not.toContain("Новый платёж");
+    const empty = renderToString(<EmptyPayments filtered={false} />);
+    expect(empty).toContain("разделе «События»");
+    expect(empty).not.toContain("<button");
+    expect(renderToString(<EmptyPayments filtered />)).toContain("Ничего не найдено");
   });
 });
 
@@ -380,5 +385,101 @@ describe("диалоги", () => {
     expect(previewText({ count: 5, first: "2030-03-04", last: "2030-03-31", dates: [] })).toBe("Будет 5 платежей: с 4 марта, пн по 31 марта, вс");
     expect(previewText({ count: 1, first: "2030-03-04", last: "2030-03-04", dates: [] })).toBe("Будет 1 платёж: 4 марта, пн");
     expect(previewText({ count: 0, first: null, last: null, dates: [] })).toMatch(/нет подходящих/);
+  });
+});
+
+describe("фильтры, сортировка и итоги списка платежей", () => {
+  const acc = (id: number) => (id === 1 ? "Карта" : "Наличные");
+  const a = pay({ id: 1, title: "Аренда", amount_kop: 5_000_000, planned_on: "2030-03-05", account_id: 1 });
+  const b = pay({ id: 2, title: "Бонус", direction: "income", amount_kop: 100_000, planned_on: "2030-03-20", account_id: 2, note: "премия" });
+  const c = pay({ id: 3, title: "Кофе", amount_kop: 30_000, planned_on: "2030-04-02", account_id: 1, status: "completed", actual_amount_kop: 35_000 });
+  const d = pay({ id: 4, title: "Подписка", amount_kop: 99_900, planned_on: "2030-04-02", account_id: 2, status: "skipped" });
+  const all = [c, a, d, b];
+  const ids = (l: Payment[]) => l.map((p) => p.id);
+
+  it("по дате: раньше сверху, равные даты по id; реверс переворачивает", () => {
+    expect(ids(sortPayments(all, defaultSort, acc))).toEqual([1, 2, 3, 4]);
+    expect(ids(sortPayments(all, { key: "date", reverse: true }, acc))).toEqual([4, 3, 2, 1]);
+  });
+
+  it("по сумме берёт факт у выполненных, по названию и счёту порядок русский", () => {
+    expect(ids(sortPayments(all, { key: "amount", reverse: false }, acc))).toEqual([3, 4, 2, 1]);
+    expect(ids(sortPayments(all, { key: "amount", reverse: true }, acc))).toEqual([1, 2, 4, 3]);
+    expect(ids(sortPayments(all, { key: "title", reverse: false }, acc))).toEqual([1, 2, 3, 4]);
+    // «Карта» < «Наличные»; внутри счёта по дате
+    expect(ids(sortPayments(all, { key: "account", reverse: false }, acc))).toEqual([1, 3, 2, 4]);
+  });
+
+  it("сортировка не меняет исходный список, подсказки пишутся словами", () => {
+    const copy = all.slice();
+    sortPayments(all, { key: "amount", reverse: true }, acc);
+    expect(all).toEqual(copy);
+    expect(sortHint({ key: "date", reverse: false })).toBe("ближайшие сверху");
+    expect(sortHint({ key: "amount", reverse: true })).toBe("большие суммы сверху");
+  });
+
+  it("сохранённая сортировка: мусор сводится к умолчанию", () => {
+    expect(parseSort(null)).toEqual(defaultSort);
+    expect(parseSort("не json")).toEqual(defaultSort);
+    expect(parseSort('{"key":"хлам","reverse":1}')).toEqual(defaultSort);
+    expect(parseSort('{"key":"amount","reverse":true}')).toEqual({ key: "amount", reverse: true });
+  });
+
+  it("поиск: название, комментарий и счёт, без учёта регистра", () => {
+    expect(matchesQuery(a, "АРЕНД", "Карта")).toBe(true);
+    expect(matchesQuery(b, "премия", "Наличные")).toBe(true);
+    expect(matchesQuery(b, "налич", "Наличные")).toBe(true);
+    expect(matchesQuery(a, "кофе", "Карта")).toBe(false);
+    expect(matchesQuery(a, "   ", "Карта")).toBe(true);
+  });
+
+  it("итоги и группы по месяцам считаются как в Rust: пропущенные не входят в суммы", () => {
+    const t = totalsOf(all);
+    expect(t).toEqual({
+      count: 4,
+      skipped_count: 1,
+      planned_income_kop: 100_000,
+      planned_expense_kop: 5_000_000,
+      completed_income_kop: 0,
+      completed_expense_kop: 35_000,
+    });
+    const months = groupMonths(all);
+    expect(months.map((m) => m.month)).toEqual(["2030-03", "2030-04"]);
+    expect(months[1].payments.map((p) => p.id)).toEqual([3, 4]);
+    expect(months[0].totals.count).toBe(2);
+  });
+
+  it("панель поиска и сортировки отрисована", () => {
+    const html = renderToString(<SearchSortBar query="" onQuery={() => {}} sort={defaultSort} onSort={() => {}} />);
+    for (const w of ["Дата", "Сумма", "Название", "Счёт", "ближайшие сверху", "Поиск по платежам"]) expect(html).toContain(w);
+  });
+
+  it("заголовок вместо месяца и пункты меню платежа", () => {
+    const html = renderToString(
+      <MonthCard group={{ month: "", totals: totalsOf([a]), payments: [a] }} title="По признаку «сумма»" accounts={new Map([[1, account]])} rules={new Map()} today="2030-03-15" selecting={false} picked={new Set()} expanded={false} onExpand={() => {}} actions={noopActions} onPick={() => {}} />,
+    );
+    expect(html).toContain("По признаку «сумма»");
+  });
+
+  it("период для платежей события: короткая серия целиком, длинная месяцем вокруг ближайшего платежа", () => {
+    const f = { key: "r1", title: "Т", ruleId: 1, paymentId: null, from: "2030-03-01", to: "2030-06-30", anchor: "2030-03-15" };
+    expect(periodForFocus(f)).toEqual({ kind: "custom", from: "2030-03-01", to: "2030-06-30" });
+    expect(periodForFocus({ ...f, to: "2035-01-01" })).toEqual({ kind: "month", from: "2030-03-01", to: "2030-03-31" });
+  });
+
+  it("правка суммы и даты одного платежа", () => {
+    const html = renderToString(<PaymentEditDialog payment={pay({ id: 1, amount_kop: 123_456, planned_on: "2030-03-10" })} onSave={async () => {}} onClose={() => {}} />);
+    expect(html).toContain("1234,56");
+    expect(html).toContain('value="2030-03-10"');
+    expect(html).toContain("Изменится только этот платёж");
+    expect(renderToString(<PaymentEditDialog payment={pay({ id: 1, status: "completed" })} onSave={async () => {}} onClose={() => {}} />)).toContain("Изменить факт");
+  });
+
+  it("диалоги события: свои заголовки", () => {
+    const html = renderToString(<PaymentDialog entity="event" payment={null} rule={null} accounts={[account]} today="2030-03-10" api={noopApi} onSave={async () => {}} onClose={() => {}} />);
+    expect(html).toContain("Новое событие");
+    const del = renderToString(<DeleteDialog entity="event" payments={[pay({ id: 1, rule_id: 7 })]} onConfirm={async () => {}} onClose={() => {}} />);
+    expect(del).toContain("Удалить повторяющееся событие");
+    expect(renderToString(<DeleteDialog entity="event" payments={[pay({ id: 1 })]} onConfirm={async () => {}} onClose={() => {}} />)).toContain("Удалить событие?");
   });
 });

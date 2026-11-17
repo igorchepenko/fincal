@@ -1,5 +1,5 @@
 import { formatKop } from "../accounts/money";
-import type { MonthTotals, Payment, PaymentStatus, RecurrenceInfo } from "./api";
+import type { MonthGroup, MonthTotals, Payment, PaymentStatus, RecurrenceInfo } from "./api";
 import { WEEKDAY_CODES, WEEKDAY_SHORT_RU } from "./dates";
 
 /** Сумма платежа с учётом факта: у выполненного это фактическая сумма, если её ввели. */
@@ -78,4 +78,36 @@ export function describeRule(r: Pick<RecurrenceInfo, "frequency" | "interval" | 
     return `${head}: ${days.join(", ")}${last ? "" : " числа"}`;
   }
   return n === 1 ? "Каждый год" : `Каждые ${n} ${plural(n, "год", "года", "лет")}`;
+}
+
+/** Итоги по списку платежей: то же, что считает Rust для месяца (пропущенные не входят в суммы). */
+export function totalsOf(list: Payment[]): MonthTotals {
+  const t: MonthTotals = { count: 0, skipped_count: 0, planned_income_kop: 0, planned_expense_kop: 0, completed_income_kop: 0, completed_expense_kop: 0 };
+  for (const p of list) {
+    t.count += 1;
+    const income = p.direction === "income";
+    if (p.status === "planned") {
+      if (income) t.planned_income_kop += p.amount_kop;
+      else t.planned_expense_kop += p.amount_kop;
+    } else if (p.status === "completed") {
+      const a = p.actual_amount_kop ?? p.amount_kop;
+      if (income) t.completed_income_kop += a;
+      else t.completed_expense_kop += a;
+    } else {
+      t.skipped_count += 1;
+    }
+  }
+  return t;
+}
+
+/** Группировка по месяцам (ГГГГ-ММ) в порядке возрастания; внутри месяца порядок сохраняется. */
+export function groupMonths(list: Payment[]): MonthGroup[] {
+  const map = new Map<string, Payment[]>();
+  for (const p of list) {
+    const key = p.planned_on.slice(0, 7);
+    const g = map.get(key);
+    if (g) g.push(p);
+    else map.set(key, [p]);
+  }
+  return [...map.keys()].sort().map((month) => ({ month, totals: totalsOf(map.get(month)!), payments: map.get(month)! }));
 }
