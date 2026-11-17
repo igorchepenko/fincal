@@ -7,8 +7,10 @@ mod recurrence;
 mod lock;
 mod lock_commands;
 mod store;
+mod window;
+mod window_state;
 
-use tauri::Manager;
+use tauri::{Manager, RunEvent, WindowEvent};
 
 pub fn run() {
     tauri::Builder::default()
@@ -21,6 +23,7 @@ pub fn run() {
             let lock_settings = lock::LockSettings::load(&conn).unwrap_or_default();
             app.manage(lock::Lock::new(lock_settings, auth::system()));
             app.manage(commands::Db(std::sync::Mutex::new(conn)));
+            window::restore(app.handle());
             lock_commands::start_watcher(app.handle().clone());
             Ok(())
         })
@@ -41,6 +44,7 @@ pub fn run() {
             commands::set_transaction_tags,
             commands::create_payment,
             commands::list_payments,
+            commands::list_events,
             commands::get_payment,
             commands::get_recurrence,
             commands::preview_recurrence,
@@ -58,6 +62,14 @@ pub fn run() {
             lock_commands::unlock,
             lock_commands::set_lock_settings,
         ])
-        .run(tauri::generate_context!())
-        .expect("ошибка запуска FinCal");
+        .build(tauri::generate_context!())
+        .expect("ошибка запуска FinCal")
+        .run(|app, event| match event {
+            // Положение окна пишем при закрытии и выходе: во время перетаскивания база не нагружается.
+            RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { .. }, .. } if label == "main" => {
+                window::save(app)
+            }
+            RunEvent::ExitRequested { .. } => window::save(app),
+            _ => {}
+        });
 }

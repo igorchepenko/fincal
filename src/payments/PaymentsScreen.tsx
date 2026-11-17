@@ -5,9 +5,12 @@ import { Icon } from "../shell/Icon";
 import type { Direction, MonthGroup, Payment, PaymentApi, PaymentFilter, PaymentList, PaymentStatus, RecurrenceInfo, Scope } from "./api";
 import { tauriPaymentApi } from "./api";
 import { addMonths, diffDays, formatDay, isValidDay, monthEnd, monthStart, monthTitle, today as todayIso } from "./dates";
-import { toNewPayment, toPatch, type Checked } from "./form";
-import { describeRule, isOverdue, monthNet, paymentsWord, signedAmount, signedKop, statusTitle, sumNet } from "./model";
-import { CompleteDialog, DeleteDialog, PaymentDialog } from "./PaymentDialog";
+import { toPatch, type Checked } from "./form";
+import { describeRule, groupMonths, isOverdue, monthNet, paymentsWord, signedKop, statusTitle, sumNet, totalsOf } from "./model";
+import { CompleteDialog, DeleteDialog, PaymentDialog, PaymentEditDialog } from "./PaymentDialog";
+import { defaultSort, matchesQuery, parseSort, SORT_TITLES, sortHint, sortPayments, type SortKey, type SortState } from "./sort";
+import { tauriSettingsApi, type SettingsApi } from "../settings/api";
+import type { EventFocus } from "../events/EventsScreen";
 
 export type PeriodKind = "month" | "quarter" | "year" | "custom";
 
@@ -68,10 +71,12 @@ export interface Filters {
 
 export const noFilters: Filters = { direction: "all", status: "all", accountId: "all" };
 
-export function toBackendFilter(p: Period, f: Filters): PaymentFilter {
+export function toBackendFilter(p: Period, f: Filters, focus?: EventFocus | null): PaymentFilter {
   return {
     from: p.from,
     to: p.to,
+    ...(focus?.ruleId != null ? { rule_id: focus.ruleId } : {}),
+    ...(focus?.paymentId != null ? { payment_id: focus.paymentId } : {}),
     ...(f.direction !== "all" ? { direction: f.direction } : {}),
     ...(f.status !== "all" ? { status: f.status } : {}),
     ...(f.accountId !== "all" ? { account_id: f.accountId } : {}),
@@ -117,6 +122,7 @@ export interface RowActions {
   onSkip: (p: Payment) => void;
   onRestore: (p: Payment) => void;
   onEdit: (p: Payment) => void;
+  onEditEvent: (p: Payment) => void;
   onDelete: (p: Payment) => void;
 }
 
@@ -172,7 +178,10 @@ function RowMenu({ payment, actions }: { payment: Payment; actions: RowActions }
           )}
           <div className="menu-sep" />
           <button type="button" role="menuitem" className="mi" onClick={go(actions.onEdit)}>
-            <span className="mt">Изменить…</span>
+            <span className="mt">Изменить сумму и дату…</span>
+          </button>
+          <button type="button" role="menuitem" className="mi" onClick={go(actions.onEditEvent)}>
+            <span className="mt">Изменить событие…</span>
           </button>
           <button type="button" role="menuitem" className="mi pay-del" onClick={go(actions.onDelete)}>
             <span className="mt">Удалить…</span>
@@ -253,16 +262,19 @@ export interface MonthViewProps {
   onExpand: () => void;
   actions: RowActions;
   onPick: (p: Payment) => void;
+  /** Заголовок вместо названия месяца: для списка без группировки по месяцам. */
+  title?: string;
 }
 
 export function MonthCard(p: MonthViewProps) {
   const { group } = p;
+  const heading = p.title ?? monthTitle(group.month);
   const net = monthNet(group.totals);
   const rows = p.expanded ? group.payments : group.payments.slice(0, ROWS_PER_MONTH);
   return (
-    <section className="card pay-month" aria-label={monthTitle(group.month)}>
+    <section className="card pay-month" aria-label={heading}>
       <header className="pgrp-h pay-mh">
-        <span className="pay-mt">{monthTitle(group.month)}</span>
+        <span className="pay-mt">{heading}</span>
         <span className="pay-mtot">
           <span className="amt in">{"+" + formatKop(net.incomeKop)}</span>
           <span className="amt out">{"−" + formatKop(net.expenseKop)}</span>
@@ -392,9 +404,9 @@ function BulkPill({ count, onDone, onSkip, onDelete, onCancel }: { count: number
   );
 }
 
-/** Итог периода и кнопка «Новый платёж». */
-export function SummaryCard({ list, period, onAdd, selecting, onToggleSelect }: { list: PaymentList; period: Period; onAdd: () => void; selecting: boolean; onToggleSelect: () => void }) {
-  const net = sumNet(list.months.map((m) => m.totals));
+/** Итог периода. Новые платежи появляются из событий, поэтому кнопки «Новый платёж» здесь нет. */
+export function SummaryCard({ payments, period, selecting, onToggleSelect }: { payments: Payment[]; period: Period; selecting: boolean; onToggleSelect: () => void }) {
+  const net = sumNet([totalsOf(payments)]);
   return (
     <section className="card pay-sum-card" aria-label="Итог периода">
       <div className="pay-sum-main">
@@ -413,24 +425,20 @@ export function SummaryCard({ list, period, onAdd, selecting, onToggleSelect }: 
             <span className={"amt big" + (net.netKop < 0 ? " out" : "")} data-testid="sum-net">{signedKop(net.netKop)}</span>
           </div>
         </div>
-        <span className="acc-total-note">{paymentsWord(list.total_count)} в периоде, пропущенные не считаются</span>
+        <span className="acc-total-note">{paymentsWord(payments.length)} в периоде, пропущенные не считаются</span>
       </div>
       <div className="pay-sum-acts">
-        {list.total_count > 0 && (
+        {payments.length > 0 && (
           <button type="button" className="btn" aria-pressed={selecting} onClick={onToggleSelect}>
             {selecting ? "Отменить выбор" : "Выбрать"}
           </button>
         )}
-        <button type="button" className="btn primary" onClick={onAdd}>
-          <Icon name="plus" />
-          Новый платёж
-        </button>
       </div>
     </section>
   );
 }
 
-export function EmptyPayments({ filtered, hasAccounts, onAdd }: { filtered: boolean; hasAccounts: boolean; onAdd: () => void }) {
+export function EmptyPayments({ filtered }: { filtered: boolean }) {
   return (
     <section className="card shell-empty" aria-labelledby="screen-title">
       <div className="empty">
@@ -440,33 +448,72 @@ export function EmptyPayments({ filtered, hasAccounts, onAdd }: { filtered: bool
         <b>{filtered ? "Ничего не найдено" : "В этом периоде платежей нет"}</b>
         <p>
           {filtered
-            ? "Измени период или фильтры, чтобы увидеть платежи."
-            : hasAccounts
-              ? "Добавь поступление или списание, в том числе повторяющееся: зарплату, аренду, подписку."
-              : "Чтобы добавить платёж, сначала заведи счёт в разделе «Счета»."}
+            ? "Измени период, поиск или фильтры, чтобы увидеть платежи."
+            : "Платежи появляются из событий. Добавь поступление или списание, в том числе повторяющееся, в разделе «События»."}
         </p>
-        {hasAccounts && (
-          <div className="ea">
-            <button type="button" className="btn primary" onClick={onAdd}>
-              Новый платёж
-            </button>
-          </div>
-        )}
       </div>
     </section>
   );
 }
 
+/** Поиск и сортировка: ряд кнопок критериев, повторный клик или стрелка разворачивают порядок. */
+export function SearchSortBar({ query, onQuery, sort, onSort }: { query: string; onQuery: (q: string) => void; sort: SortState; onSort: (s: SortState) => void }) {
+  return (
+    <div className="pay-sortbar">
+      <div className="ev-search">
+        <Icon name="search" />
+        <input type="search" className="inp" placeholder="Поиск по названию, комментарию, счёту" aria-label="Поиск по платежам" value={query} onChange={(e) => onQuery(e.target.value)} />
+      </div>
+      <div className="seg" role="group" aria-label="Сортировка">
+        {(Object.keys(SORT_TITLES) as SortKey[]).map((k) => (
+          <button key={k} type="button" className={sort.key === k ? "on" : ""} aria-pressed={sort.key === k} onClick={() => onSort(sort.key === k ? { key: k, reverse: !sort.reverse } : { key: k, reverse: false })}>
+            {SORT_TITLES[k]}
+          </button>
+        ))}
+      </div>
+      <button type="button" className="btn ghost sm" aria-label="Развернуть порядок" title="Развернуть порядок" onClick={() => onSort({ ...sort, reverse: !sort.reverse })}>
+        <Icon name={sort.reverse ? "up" : "down"} />
+        <span>{sortHint(sort)}</span>
+      </button>
+    </div>
+  );
+}
+
 type Dialog =
-  | { kind: "edit"; payment: Payment | null }
+  | { kind: "event"; payment: Payment }
+  | { kind: "amount"; payment: Payment }
   | { kind: "complete"; payment: Payment }
   | { kind: "delete"; payments: Payment[] };
 
-/** Экран «Платежи»: список текущего профиля по месяцам за выбранный период. */
-export function PaymentsScreen({ api = tauriPaymentApi, accountApi = tauriAccountApi, now = todayIso }: { api?: PaymentApi; accountApi?: AccountApi; now?: () => string }) {
+const SORT_KEY = "payments.sort";
+
+/** Период для списка платежей одного события: весь срок, если он помещается в окно экрана, иначе месяц вокруг ближайшего платежа. */
+export function periodForFocus(f: EventFocus): Period {
+  const span = diffDays(f.from, f.to) + 1;
+  return span <= MAX_PERIOD_DAYS ? { kind: "custom", from: f.from, to: f.to } : periodFor("month", f.anchor);
+}
+
+/** Экран «Платежи»: все платежи из всех событий текущего профиля за период. Создаются платежи в «Событиях». */
+export function PaymentsScreen({
+  api = tauriPaymentApi,
+  accountApi = tauriAccountApi,
+  settingsApi = tauriSettingsApi,
+  now = todayIso,
+  focus: initialFocus = null,
+}: {
+  api?: PaymentApi;
+  accountApi?: AccountApi;
+  settingsApi?: SettingsApi;
+  now?: () => string;
+  /** Показать только платежи одного события (переход из «Событий»). */
+  focus?: EventFocus | null;
+}) {
   const today = now();
-  const [period, setPeriod] = useState<Period>(() => periodFor("month", today));
+  const [focus, setFocus] = useState<EventFocus | null>(initialFocus);
+  const [period, setPeriod] = useState<Period>(() => (initialFocus ? periodForFocus(initialFocus) : periodFor("month", today)));
   const [filters, setFilters] = useState<Filters>(noFilters);
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortState>(defaultSort);
   const [list, setList] = useState<PaymentList | null>(null);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -477,13 +524,13 @@ export function PaymentsScreen({ api = tauriPaymentApi, accountApi = tauriAccoun
   const seq = useRef(0);
 
   const perr = periodError(period);
-  const filterKey = JSON.stringify([period.from, period.to, filters]);
+  const filterKey = JSON.stringify([period.from, period.to, filters, focus?.key ?? null]);
 
   const reload = useCallback(async () => {
     if (perr) return;
     const mine = ++seq.current;
     try {
-      const res = await api.list(toBackendFilter(period, filters));
+      const res = await api.list(toBackendFilter(period, filters, focus));
       if (mine !== seq.current) return; // пока грузили, период уже сменили
       setList(res);
       setError(null);
@@ -502,9 +549,38 @@ export function PaymentsScreen({ api = tauriPaymentApi, accountApi = tauriAccoun
     accountApi.list().then(setAccounts).catch((e: Error) => setError(e.message));
   }, [accountApi]);
 
+  // Сортировка помнится в настройках профиля; поиск и фильтры при выходе из раздела сбрасываются.
+  useEffect(() => {
+    let alive = true;
+    settingsApi
+      .get(SORT_KEY)
+      .then((raw) => alive && setSort(parseSort(raw)))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [settingsApi]);
+
+  const changeSort = (s: SortState) => {
+    setSort(s);
+    settingsApi.set(SORT_KEY, JSON.stringify(s)).catch(() => {});
+  };
+
   const accountMap = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
   const ruleMap = useMemo(() => new Map((list?.rules ?? []).map((r) => [r.rule_id, r])), [list]);
-  const activeAccounts = accounts.filter((a) => a.status === "active");
+  const accountName = useCallback((id: number) => accountMap.get(id)?.name ?? "", [accountMap]);
+
+  // Всё, что ниже, считается из списка периода на экране: поиск, порядок, группы и итоги.
+  const visible = useMemo(() => {
+    const all = (list?.months ?? []).flatMap((m) => m.payments).filter((pay) => matchesQuery(pay, query, accountName(pay.account_id)));
+    return sortPayments(all, sort, accountName);
+  }, [list, query, sort, accountName]);
+  const groups = useMemo(() => {
+    if (sort.key !== "date") return null;
+    const months = groupMonths(visible);
+    // visible уже отсортирован (в том числе в обратную сторону), поэтому месяцы тоже разворачиваем.
+    return sort.reverse ? months.reverse() : months;
+  }, [visible, sort]);
 
   const run = async (action: () => Promise<unknown>) => {
     try {
@@ -520,12 +596,12 @@ export function PaymentsScreen({ api = tauriPaymentApi, accountApi = tauriAccoun
     onComplete: (p) => setDialog({ kind: "complete", payment: p }),
     onSkip: (p) => void run(() => api.setStatus(p.id, "skipped", null)),
     onRestore: (p) => void run(() => api.setStatus(p.id, "planned", null)),
-    onEdit: (p) => setDialog({ kind: "edit", payment: p }),
+    onEdit: (p) => setDialog({ kind: "amount", payment: p }),
+    onEditEvent: (p) => setDialog({ kind: "event", payment: p }),
     onDelete: (p) => setDialog({ kind: "delete", payments: [p] }),
   };
 
-  const allPayments = useMemo(() => (list?.months ?? []).flatMap((m) => m.payments), [list]);
-  const pickedPayments = allPayments.filter((p) => picked.has(p.id));
+  const pickedPayments = visible.filter((p) => picked.has(p.id));
 
   const endSelect = () => {
     setSelecting(false);
@@ -538,19 +614,39 @@ export function PaymentsScreen({ api = tauriPaymentApi, accountApi = tauriAccoun
       endSelect();
     });
 
-  async function save(checked: Checked, scope: Scope) {
+  async function saveEvent(checked: Checked, scope: Scope) {
     const d = dialog;
-    if (!d || d.kind !== "edit") return;
-    if (!d.payment) await api.create(toNewPayment(checked));
-    else {
-      const rule = d.payment.rule_id !== null ? (ruleMap.get(d.payment.rule_id) ?? null) : null;
-      await api.update(d.payment.id, toPatch(checked, d.payment, rule, scope), scope);
-    }
+    if (!d || d.kind !== "event") return;
+    const rule = d.payment.rule_id !== null ? (ruleMap.get(d.payment.rule_id) ?? null) : null;
+    await api.update(d.payment.id, toPatch(checked, d.payment, rule, scope), scope);
     await reload();
   }
 
-  const filtered = filters.direction !== "all" || filters.status !== "all" || filters.accountId !== "all";
-  const editRule = dialog?.kind === "edit" && dialog.payment?.rule_id != null ? (ruleMap.get(dialog.payment.rule_id) ?? null) : null;
+  const filtered = filters.direction !== "all" || filters.status !== "all" || filters.accountId !== "all" || query.trim() !== "";
+  const editRule = dialog?.kind === "event" && dialog.payment.rule_id != null ? (ruleMap.get(dialog.payment.rule_id) ?? null) : null;
+
+  const card = (g: MonthGroup, title?: string) => (
+    <MonthCard
+      key={title ?? g.month}
+      group={g}
+      title={title}
+      accounts={accountMap}
+      rules={ruleMap}
+      today={today}
+      selecting={selecting}
+      picked={picked}
+      expanded={expanded.has(title ?? g.month)}
+      onExpand={() => setExpanded((s) => new Set(s).add(title ?? g.month))}
+      actions={actions}
+      onPick={(p) =>
+        setPicked((s) => {
+          const n = new Set(s);
+          if (!n.delete(p.id)) n.add(p.id);
+          return n;
+        })
+      }
+    />
+  );
 
   return (
     <>
@@ -567,37 +663,31 @@ export function PaymentsScreen({ api = tauriPaymentApi, accountApi = tauriAccoun
           </div>
         </div>
       )}
+      {focus && (
+        <div className="pay-focus" role="status">
+          <span>
+            Платежи события «{focus.title}»
+          </span>
+          <button type="button" className="btn ghost sm" aria-label="Показать платежи всех событий" onClick={() => { setFocus(null); setPeriod(periodFor("month", today)); endSelect(); }}>
+            <Icon name="close" />
+            Все события
+          </button>
+        </div>
+      )}
       <PeriodBar period={period} onChange={(p) => { setPeriod(p); endSelect(); }} />
       <FilterBar filters={filters} accounts={accounts} onChange={(f) => { setFilters(f); endSelect(); }} />
+      <SearchSortBar query={query} onQuery={(q) => { setQuery(q); endSelect(); }} sort={sort} onSort={changeSort} />
       {perr ? null : list === null ? (
         !error && <p className="acc-none">Загрузка…</p>
       ) : (
         <>
-          <SummaryCard list={list} period={period} onAdd={() => setDialog({ kind: "edit", payment: null })} selecting={selecting} onToggleSelect={() => (selecting ? endSelect() : setSelecting(true))} />
-          {list.months.length === 0 ? (
-            <EmptyPayments filtered={filtered} hasAccounts={activeAccounts.length > 0} onAdd={() => setDialog({ kind: "edit", payment: null })} />
+          <SummaryCard payments={visible} period={period} selecting={selecting} onToggleSelect={() => (selecting ? endSelect() : setSelecting(true))} />
+          {visible.length === 0 ? (
+            <EmptyPayments filtered={filtered} />
+          ) : groups ? (
+            groups.map((g) => card(g))
           ) : (
-            list.months.map((g) => (
-              <MonthCard
-                key={g.month}
-                group={g}
-                accounts={accountMap}
-                rules={ruleMap}
-                today={today}
-                selecting={selecting}
-                picked={picked}
-                expanded={expanded.has(g.month)}
-                onExpand={() => setExpanded((s) => new Set(s).add(g.month))}
-                actions={actions}
-                onPick={(p) =>
-                  setPicked((s) => {
-                    const n = new Set(s);
-                    if (!n.delete(p.id)) n.add(p.id);
-                    return n;
-                  })
-                }
-              />
-            ))
+            card({ month: "", totals: totalsOf(visible), payments: visible }, `По признаку «${SORT_TITLES[sort.key].toLowerCase()}»`)
           )}
         </>
       )}
@@ -610,8 +700,21 @@ export function PaymentsScreen({ api = tauriPaymentApi, accountApi = tauriAccoun
           onCancel={endSelect}
         />
       )}
-      {dialog?.kind === "edit" && (
-        <PaymentDialog payment={dialog.payment} rule={editRule} accounts={accounts} today={today} api={api} onSave={save} onClose={() => setDialog(null)} />
+      {dialog?.kind === "amount" && (
+        <PaymentEditDialog
+          payment={dialog.payment}
+          onClose={() => setDialog(null)}
+          onSave={async (kop, day) => {
+            const patch: { amount_kop?: number; planned_on?: string } = {};
+            if (kop !== dialog.payment.amount_kop) patch.amount_kop = kop;
+            if (day !== dialog.payment.planned_on) patch.planned_on = day;
+            if (Object.keys(patch).length > 0) await api.update(dialog.payment.id, patch, "this");
+            await reload();
+          }}
+        />
+      )}
+      {dialog?.kind === "event" && (
+        <PaymentDialog entity="event" payment={dialog.payment} rule={editRule} accounts={accounts} today={today} api={api} onSave={saveEvent} onClose={() => setDialog(null)} />
       )}
       {dialog?.kind === "complete" && (
         <CompleteDialog payment={dialog.payment} onClose={() => setDialog(null)} onConfirm={async (kop) => { await api.setStatus(dialog.payment.id, "completed", kop); await reload(); }} />

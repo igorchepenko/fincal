@@ -5,9 +5,10 @@
 .shell-sb .nav{width:100%;text-align:left}
 .shell-brand{font:700 15px/1 var(--font);color:var(--text-strong);padding:0 10px 14px}
 .shell-foot{margin-top:auto;display:flex;flex-direction:column;gap:10px;padding:0 4px}
-.shell-foot .seg{width:100%}
-.shell-foot .seg button{flex:1;padding:0 6px}
-.shell-ver{font-size:11px;color:var(--text-faint);padding:0 6px}
+.shell-foot .seg button{padding:0 10px}
+.shell-bar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.shell-gear{width:var(--control-sm);padding:0;flex:none}
+.shell-gear .ic{width:16px;height:16px}
 .shell-main{padding:28px;display:flex;flex-direction:column;gap:14px;min-width:0;overflow:auto}
 .shell-title{margin:0;font:700 20px/1.2 var(--font);color:var(--text-strong);letter-spacing:-.01em}
 .shell-empty{flex:1;justify-content:center}
@@ -134,3 +135,56 @@ input[type="date"].inp{border:0;outline:0;width:100%;font:inherit;font-weight:50
 .pay-preview.bad{background:var(--warning-soft);color:var(--warning-text)}
 .rad.muted{opacity:.55;cursor:not-allowed}
 button.rad{text-align:left;width:100%}
+
+/* Настройки: окно поверх экрана, слева разделы, справа содержимое */
+.dlg:has(.set-win){width:min(760px,100%);height:min(540px,76vh);padding:0;overflow:hidden;gap:0}
+.set-win{display:grid;grid-template-columns:190px minmax(0,1fr);height:100%;min-height:0}
+.set-nav{background:var(--chrome);box-shadow:inset -1px 0 0 var(--line);padding:14px 10px;display:flex;flex-direction:column;gap:2px}
+.set-nav .nav{width:100%;text-align:left}
+.set-body{padding:18px 22px;display:flex;flex-direction:column;gap:16px;min-width:0;overflow:auto}
+.set-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.set-head h3{font-size:18px;font-weight:800}
+.set-rows{display:flex;flex-direction:column;gap:14px}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.set-name{font-weight:600;color:var(--text-strong)}
+.set-hint{color:var(--text-faint);font-size:12px;margin:0}
+.set-notes{margin:6px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;color:var(--text)}
+.menu-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.menu-item{display:flex;align-items:center;gap:10px;height:40px;padding:0 8px 0 6px;border-radius:var(--r-md);background:var(--surface);box-shadow:0 0 0 1px var(--line)}
+.menu-item .ic{color:var(--icon);flex:none}
+.menu-item.drag{opacity:.5}
+.menu-item.over{box-shadow:0 0 0 1.5px var(--accent)}
+.menu-grip{display:inline-flex;cursor:grab}
+.menu-name{flex:1;min-width:0;font-weight:500;color:var(--text-strong)}
+.menu-key{font-size:11px;color:var(--text-faint);min-width:24px;text-align:right}
+.menu-item .btn.sm{width:var(--control-sm);padding:0}
+
+/* События: карточки, шапка с поиском и фильтрами */
+.ev-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ev-grow{flex:1}
+.ev-search{position:relative;display:flex;align-items:center;min-width:220px;flex:0 1 320px}
+.ev-search .ic{position:absolute;left:12px;width:16px;height:16px;color:var(--text-faint);pointer-events:none}
+.ev-search input.inp{padding-left:36px;width:100%}
+.ev-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+.card.ev-card{gap:10px;padding:16px 18px}
+.card.ev-card.ev-done{opacity:.72}
+.ev-top{display:flex;align-items:center;gap:12px}
+.ev-name{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.ev-name b{color:var(--text-strong);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ev-name small{color:var(--text-faint);font-size:12px}
+.ev-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-width:0}
+.ev-meta .chip{max-width:100%}
+.ev-meta .chip .ic{width:14px;height:14px}
+.ev-prog{color:var(--text);font-size:13px}
+.ev-next{color:var(--text-faint);font-size:12px}
+.ev-note{overflow-wrap:anywhere}
+.ev-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+.pay-sortbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pay-sortbar .btn .ic{width:14px;height:14px}
+.pay-focus{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-radius:var(--r-md);background:var(--accent-soft);color:var(--accent-text);font-weight:600}
+
+/* Бюджет */
+.bud{display:flex;flex-direction:column;gap:14px;min-width:0}
+.bud-kpis{gap:28px}
+.bud-k .amt.big{text-align:left}
+.bud-chart .bud-tip{pointer-events:none;z-index:5}

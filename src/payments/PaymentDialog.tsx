@@ -3,7 +3,7 @@ import type { Account } from "../accounts/api";
 import { formatKop, kopToInput, parseRubles } from "../accounts/money";
 import { Modal } from "../ui/Modal";
 import type { Frequency, Payment, PaymentApi, RecurrenceInfo, RecurrencePreview, Scope } from "./api";
-import { formatDay, WEEKDAY_CODES, WEEKDAY_SHORT_RU, weekdayCode } from "./dates";
+import { formatDay, isValidDay, WEEKDAY_CODES, WEEKDAY_SHORT_RU, weekdayCode } from "./dates";
 import {
   emptyForm,
   formFromPayment,
@@ -276,10 +276,13 @@ export interface PaymentDialogProps {
   api: PaymentApi;
   onSave: (checked: Checked, scope: Scope) => Promise<void>;
   onClose: () => void;
+  /** Что правим: «событие» (раздел «События») или «платёж» (раздел «Платежи»). */
+  entity?: "event" | "payment";
 }
 
-/** Создание и правка платежа с конструктором повторения. */
-export function PaymentDialog({ payment, rule, accounts, today, api, onSave, onClose }: PaymentDialogProps) {
+/** Создание и правка события или платежа с конструктором повторения. */
+export function PaymentDialog({ payment, rule, accounts, today, api, onSave, onClose, entity = "payment" }: PaymentDialogProps) {
+  const isEvent = entity === "event";
   const inSeries = Boolean(payment && payment.rule_id !== null && rule);
   const [form, setForm] = useState<PaymentForm>(() =>
     payment ? formFromPayment(payment, rule) : emptyForm(today, accounts.find((a) => a.status === "active")?.id),
@@ -326,8 +329,12 @@ export function PaymentDialog({ payment, rule, accounts, today, api, onSave, onC
     return (
       <Modal onClose={onClose}>
         <ScopeStep
-          title="Изменить повторяющийся платёж"
-          text={`«${pending.title}» входит в серию (${rule ? describeRule(rule).toLowerCase() : "повторяется"}). К чему применить изменения?`}
+          title={isEvent ? "Изменить повторяющееся событие" : "Изменить повторяющийся платёж"}
+          text={
+            isEvent && payment
+              ? `«${pending.title}» повторяется (${rule ? describeRule(rule).toLowerCase() : "серия"}). Правка относится к платежу ${formatDay(payment.planned_on, today)}: применить только к нему или и к следующим?`
+              : `«${pending.title}» входит в серию (${rule ? describeRule(rule).toLowerCase() : "повторяется"}). К чему применить изменения?`
+          }
           verb="Сохранить"
           thisDisabledReason={changed ? "Правило повторения меняется только для этого и следующих платежей" : undefined}
           busy={busy}
@@ -348,7 +355,7 @@ export function PaymentDialog({ payment, rule, accounts, today, api, onSave, onC
   return (
     <Modal onClose={onClose}>
       <form className="dlg-form pay-form" onSubmit={submit} noValidate>
-        <h3>{payment ? "Изменить платёж" : "Новый платёж"}</h3>
+        <h3>{payment ? (isEvent ? "Изменить событие" : "Изменить платёж") : isEvent ? "Новое событие" : "Новый платёж"}</h3>
 
         <div className="seg money lg fill" role="radiogroup" aria-label="Тип платежа">
           <button
@@ -588,12 +595,15 @@ export function DeleteDialog({
   payments,
   onConfirm,
   onClose,
+  entity = "payment",
 }: {
   /** Один или несколько платежей (массовое удаление идёт только «только этот»). */
   payments: Payment[];
   onConfirm: (scope: Scope) => Promise<void>;
   onClose: () => void;
+  entity?: "event" | "payment";
 }) {
+  const isEvent = entity === "event";
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const single = payments.length === 1 ? payments[0] : null;
@@ -614,8 +624,12 @@ export function DeleteDialog({
     return (
       <Modal onClose={onClose}>
         <ScopeStep
-          title="Удалить повторяющийся платёж"
-          text={`«${single.title}» входит в серию. Что удалить?`}
+          title={isEvent ? "Удалить повторяющееся событие" : "Удалить повторяющийся платёж"}
+          text={
+            isEvent
+              ? `«${single.title}» повторяется. Что удалить: только платёж ${single.planned_on.split("-").reverse().join(".")} или и все следующие?`
+              : `«${single.title}» входит в серию. Что удалить?`
+          }
           verb="Удалить"
           danger
           busy={busy}
@@ -629,7 +643,7 @@ export function DeleteDialog({
   return (
     <Modal onClose={onClose}>
       <div className="dlg-form">
-        <h3>{single ? "Удалить платёж?" : `Удалить ${paymentsWord(payments.length)}?`}</h3>
+        <h3>{single ? (isEvent ? "Удалить событие?" : "Удалить платёж?") : `Удалить ${paymentsWord(payments.length)}?`}</h3>
         <p>
           {single
             ? `«${single.title}» исчезнет из списка.`
@@ -645,6 +659,104 @@ export function DeleteDialog({
           </button>
         </div>
       </div>
+    </Modal>
+  );
+}
+
+/** Правка одного платежа: плановая сумма и дата. Серия и остальные платежи не меняются. */
+export function PaymentEditDialog({
+  payment,
+  onSave,
+  onClose,
+}: {
+  payment: Payment;
+  onSave: (amountKop: number, plannedOn: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [amount, setAmount] = useState(kopToInput(payment.amount_kop));
+  const [date, setDate] = useState(payment.planned_on);
+  const [errors, setErrors] = useState<{ amount?: string; date?: string }>({});
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const isIn = payment.direction === "income";
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    const kop = parseRubles(amount);
+    const next: { amount?: string; date?: string } = {};
+    if (kop === null || kop <= 0) next.amount = "Введи сумму больше нуля, например 1500 или 349,90";
+    if (!isValidDay(date)) next.date = "Введи дату целиком";
+    setErrors(next);
+    if (next.amount || next.date || kop === null) return;
+    setBusy(true);
+    try {
+      await onSave(kop, date);
+      onClose();
+    } catch (err) {
+      setServerError((err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <form className="dlg-form" onSubmit={submit} noValidate>
+        <h3>Изменить платёж</h3>
+        <p>
+          {payment.title}. Изменится только этот платёж: остальные платежи события и само событие останутся как есть.
+          {payment.status === "completed" && " Фактическую сумму меняй отдельно, через «Изменить факт»."}
+        </p>
+        <div>
+          <label className="flab" htmlFor="pay-edit-amount">
+            Плановая сумма
+          </label>
+          <div className={"inp amount pay-money" + (errors.amount ? " err" : "")}>
+            <span className={"sgn " + (isIn ? "in" : "out")}>{isIn ? "+" : "−"}</span>
+            <input
+              id="pay-edit-amount"
+              inputMode="decimal"
+              className="inp"
+              value={amount}
+              autoFocus
+              onFocus={(e) => e.currentTarget.select()}
+              aria-invalid={errors.amount ? true : undefined}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                setServerError(null);
+              }}
+            />
+            <span className="sfx">₽</span>
+          </div>
+          {errors.amount && <div className="fmsg">{errors.amount}</div>}
+        </div>
+        <div>
+          <label className="flab" htmlFor="pay-edit-date">
+            Дата
+          </label>
+          <input
+            id="pay-edit-date"
+            type="date"
+            className={"inp" + (errors.date ? " err" : "")}
+            value={date}
+            aria-invalid={errors.date ? true : undefined}
+            onChange={(e) => {
+              setDate(e.target.value);
+              setServerError(null);
+            }}
+          />
+          {errors.date && <div className="fmsg">{errors.date}</div>}
+        </div>
+        {serverError && <div className="fmsg">{serverError}</div>}
+        <div className="dlg-foot">
+          <button type="button" className="btn ghost" onClick={onClose}>
+            Отмена
+          </button>
+          <button type="submit" className="btn primary" disabled={busy}>
+            Сохранить
+          </button>
+        </div>
+      </form>
     </Modal>
   );
 }

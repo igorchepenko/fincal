@@ -139,6 +139,10 @@ pub struct PaymentFilter {
     pub account_id: Option<i64>,
     pub direction: Option<String>,
     pub status: Option<String>,
+    /// Только платежи одной серии (событие-серия).
+    pub rule_id: Option<i64>,
+    /// Только один платёж (событие-разовый платёж).
+    pub payment_id: Option<i64>,
 }
 
 #[derive(Debug, Default, Serialize, PartialEq)]
@@ -419,6 +423,14 @@ pub fn list_payments(conn: &Connection, owner: i64, f: &PaymentFilter) -> Result
         args.push(s.clone().into());
         sql.push_str(&format!(" AND status = ?{}", args.len()));
     }
+    if let Some(r) = f.rule_id {
+        args.push(r.into());
+        sql.push_str(&format!(" AND rule_id = ?{}", args.len()));
+    }
+    if let Some(i) = f.payment_id {
+        args.push(i.into());
+        sql.push_str(&format!(" AND id = ?{}", args.len()));
+    }
     sql.push_str(" ORDER BY planned_on, id");
     let mut st = conn.prepare(&sql)?;
     let mut payments: Vec<Transaction> = st.query_map(params_from_iter(args.iter()), tx_from_row)?.collect::<rusqlite::Result<_>>()?;
@@ -457,6 +469,144 @@ pub fn list_payments(conn: &Connection, owner: i64, f: &PaymentFilter) -> Result
         }
     }
     Ok(PaymentList { months: groups.into_values().collect(), rules, total_count })
+}
+
+// ---------- События ----------
+
+/// Событие: серия платежей (правило) или одиночный платёж.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct EventItem {
+    /// `r<id правила>` для серии, `t<id платежа>` для одиночного платежа.
+    pub key: String,
+    pub rule: Option<RecurrenceInfo>,
+    /// Платёж, по которому событие показывается и правится: ближайший запланированный
+    /// с `today` и позже, иначе самый ранний запланированный, иначе самый поздний платёж.
+    pub representative: Transaction,
+    pub total: usize,
+    pub planned: usize,
+    pub completed: usize,
+    pub skipped: usize,
+    pub first_on: String,
+    pub last_on: String,
+    /// Дата ближайшего запланированного платежа с `today` и позже.
+    pub next_on: Option<String>,
+}
+
+struct EventAcc {
+    rule_id: Option<i64>,
+    pick: Transaction,
+    total: usize,
+    planned: usize,
+    completed: usize,
+    skipped: usize,
+    first_on: String,
+    last_on: String,
+    next_on: Option<String>,
+}
+
+fn pick_rank(p: &Transaction, today: &str) -> (u8, String) {
+    // Меньше = лучше: ближайший будущий запланированный, потом любой запланированный, потом остальные (поздние первыми).
+    if p.status == "planned" && p.planned_on.as_str() >= today {
+        (0, p.planned_on.clone())
+    } else if p.status == "planned" {
+        (1, p.planned_on.clone())
+    } else {
+        // Инвертируем дату, чтобы самый поздний шёл первым.
+        (2, p.planned_on.chars().map(|c| if c.is_ascii_digit() { char::from(b'9' - (c as u8 - b'0')) } else { c }).collect())
+    }
+}
+
+/// Все события профиля: серии (один элемент на правило) и одиночные платежи.
+/// Сначала события, у которых есть будущий запланированный платёж (по дате ближайшего),
+/// затем остальные (по дате последнего платежа, свежие первыми).
+pub fn list_events(conn: &Connection, owner: i64, today: &str) -> Result<Vec<EventItem>> {
+    let today = day_text(parse_day(today)?);
+    let sql = format!(
+        "SELECT {TX_COLUMNS} FROM transactions
+         WHERE owner_id = ?1 AND deleted_at IS NULL AND direction IN ('income', 'expense')
+         ORDER BY planned_on, id"
+    );
+    let mut st = conn.prepare(&sql)?;
+    let rows: Vec<Transaction> = st.query_map(params![owner], tx_from_row)?.collect::<rusqlite::Result<_>>()?;
+
+    let mut by_rule: BTreeMap<i64, EventAcc> = BTreeMap::new();
+    let mut singles: Vec<EventAcc> = Vec::new();
+    for p in rows {
+        let key = p.rule_id;
+        let upcoming = p.status == "planned" && p.planned_on.as_str() >= today.as_str();
+        let acc = match key {
+            Some(r) => by_rule.entry(r).or_insert_with(|| EventAcc {
+                rule_id: Some(r),
+                pick: p.clone(),
+                total: 0,
+                planned: 0,
+                completed: 0,
+                skipped: 0,
+                first_on: p.planned_on.clone(),
+                last_on: p.planned_on.clone(),
+                next_on: None,
+            }),
+            None => {
+                singles.push(EventAcc {
+                    rule_id: None,
+                    pick: p.clone(),
+                    total: 0,
+                    planned: 0,
+                    completed: 0,
+                    skipped: 0,
+                    first_on: p.planned_on.clone(),
+                    last_on: p.planned_on.clone(),
+                    next_on: None,
+                });
+                singles.last_mut().unwrap()
+            }
+        };
+        acc.total += 1;
+        match p.status.as_str() {
+            "planned" => acc.planned += 1,
+            "completed" => acc.completed += 1,
+            _ => acc.skipped += 1,
+        }
+        // Платежи идут по возрастанию даты: первая встреченная дата это начало, последняя это конец.
+        acc.last_on = p.planned_on.clone();
+        if upcoming && acc.next_on.is_none() {
+            acc.next_on = Some(p.planned_on.clone());
+        }
+        if pick_rank(&p, &today) < pick_rank(&acc.pick, &today) {
+            acc.pick = p;
+        }
+    }
+
+    let mut out: Vec<EventItem> = Vec::with_capacity(by_rule.len() + singles.len());
+    for acc in by_rule.into_values().chain(singles) {
+        let rule = match acc.rule_id {
+            Some(id) => get_recurrence(conn, owner, id).ok(),
+            None => None,
+        };
+        let key = match acc.rule_id {
+            Some(id) => format!("r{id}"),
+            None => format!("t{}", acc.pick.id),
+        };
+        out.push(EventItem {
+            key,
+            rule,
+            representative: acc.pick,
+            total: acc.total,
+            planned: acc.planned,
+            completed: acc.completed,
+            skipped: acc.skipped,
+            first_on: acc.first_on,
+            last_on: acc.last_on,
+            next_on: acc.next_on,
+        });
+    }
+    out.sort_by(|a, b| match (&a.next_on, &b.next_on) {
+        (Some(x), Some(y)) => x.cmp(y).then_with(|| a.key.cmp(&b.key)),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => b.last_on.cmp(&a.last_on).then_with(|| a.key.cmp(&b.key)),
+    });
+    Ok(out)
 }
 
 // ---------- Правка и удаление ----------
@@ -699,6 +849,64 @@ mod tests {
         conn.query_row("SELECT id FROM transactions WHERE rule_id = ?1 AND planned_on = ?2 AND deleted_at IS NULL", params![rule, day], |r| r.get(0)).unwrap()
     }
 
+    // ----- события -----
+
+    #[test]
+    fn events_group_series_and_singles() {
+        let (mut conn, acc) = fresh();
+        // Серия на март 2030: 4 пятницы (1, 8, 15, 22, 29 → 5 платежей).
+        let r = create_payment(&mut conn, O, &new(acc, Some(spec("weekly", "2030-03-01", "2030-03-31")))).unwrap();
+        let rule = r.rule_id.unwrap();
+        // Одиночный платёж в апреле и отдельный старый в январе.
+        let mut later = new(acc, None);
+        later.planned_on = Some("2030-04-10".into());
+        later.title = "Апрель".into();
+        let single = create_payment(&mut conn, O, &later).unwrap();
+        let old = create_payment(&mut conn, O, &new(acc, None)).unwrap(); // 2030-01-10
+
+        // Выполняем 1-й платёж серии и пропускаем 8-й.
+        store::set_transaction_status(&conn, O, id_on(&conn, rule, "2030-03-01"), "completed", None).unwrap();
+        store::set_transaction_status(&conn, O, id_on(&conn, rule, "2030-03-08"), "skipped", None).unwrap();
+
+        let ev = list_events(&conn, O, "2030-03-10").unwrap();
+        assert_eq!(ev.len(), 3);
+        // Порядок: ближайший будущий (серия: 15 марта), потом апрельский; старый без будущего в конце.
+        assert_eq!(ev[0].key, format!("r{rule}"));
+        assert_eq!(ev[1].key, format!("t{}", single.first_id));
+        assert_eq!(ev[2].key, format!("t{}", old.first_id));
+        let s = &ev[0];
+        assert_eq!((s.total, s.planned, s.completed, s.skipped), (5, 3, 1, 1));
+        assert_eq!((s.first_on.as_str(), s.last_on.as_str()), ("2030-03-01", "2030-03-29"));
+        assert_eq!(s.next_on.as_deref(), Some("2030-03-15"));
+        assert_eq!(s.representative.planned_on, "2030-03-15");
+        assert!(s.rule.is_some());
+        assert!(ev[1].rule.is_none());
+        assert_eq!(ev[1].next_on.as_deref(), Some("2030-04-10"));
+        assert_eq!(ev[2].next_on, None);
+
+        // Когда будущих нет, показываем самый ранний запланированный, а если запланированных нет, самый поздний.
+        let ev = list_events(&conn, O, "2031-01-01").unwrap();
+        assert_eq!(ev[0].next_on, None);
+        assert!(ev.iter().all(|e| e.next_on.is_none()));
+        let series = ev.iter().find(|e| e.key == format!("r{rule}")).unwrap();
+        assert_eq!(series.representative.planned_on, "2030-03-15");
+        for d in ["2030-03-15", "2030-03-22", "2030-03-29"] {
+            store::set_transaction_status(&conn, O, id_on(&conn, rule, d), "completed", None).unwrap();
+        }
+        let ev = list_events(&conn, O, "2031-01-01").unwrap();
+        let series = ev.iter().find(|e| e.key == format!("r{rule}")).unwrap();
+        assert_eq!(series.representative.planned_on, "2030-03-29");
+        assert!(list_events(&conn, O, "не дата").is_err());
+        // Фильтры по событию: серия и одиночный платёж.
+        let by = |rule_id, payment_id| {
+            list_payments(&conn, O, &PaymentFilter { from: "2030-01-01".into(), to: "2030-12-31".into(), rule_id, payment_id, ..Default::default() }).unwrap().total_count
+        };
+        assert_eq!((by(Some(rule), None), by(None, Some(single.first_id)), by(None, None)), (5, 1, 7));
+        // Удалённые платежи не считаются.
+        delete_payment(&mut conn, O, old.first_id, Scope::This).unwrap();
+        assert_eq!(list_events(&conn, O, "2030-03-10").unwrap().len(), 2);
+    }
+
     // ----- создание -----
 
     #[test]
@@ -867,7 +1075,7 @@ mod tests {
         assert_eq!(l.rules[0].rule_id, rent.rule_id.unwrap());
 
         let f = |a: Option<i64>, d: Option<&str>, st: Option<&str>| {
-            list_payments(&conn, O, &PaymentFilter { from: "2030-01-01".into(), to: "2030-12-31".into(), account_id: a, direction: d.map(Into::into), status: st.map(Into::into) })
+            list_payments(&conn, O, &PaymentFilter { from: "2030-01-01".into(), to: "2030-12-31".into(), account_id: a, direction: d.map(Into::into), status: st.map(Into::into), ..Default::default() })
                 .unwrap()
                 .total_count
         };
