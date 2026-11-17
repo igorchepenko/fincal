@@ -91,14 +91,14 @@ describe("настройки блокировки", () => {
   });
 });
 
-describe("раздел Настройки", () => {
-  it("Shell показывает переданное содержимое раздела", () => {
+describe("окно настроек", () => {
+  it("раздел «Безопасность» показывает блокировку", () => {
     const html = renderToString(
       <ProfileProvider api={noApi}>
-        <Shell version="0.0.0" initialScreen="settings" screenContent={{ settings: <p>блок-настроек</p> }} />
+        <Shell version="0.0.0" initialSettings="security" />
       </ProfileProvider>,
     );
-    expect(html).toContain("блок-настроек");
-    expect(html).not.toContain("Настроек пока нет");
+    expect(html).toContain('class="set-win"');
+    expect(html).toContain('<h3 id="set-title">Безопасность</h3>');
   });
 });

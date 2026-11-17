@@ -133,6 +133,13 @@ pub fn list_payments(db: State<Db>, filter: PaymentFilter) -> Res<PaymentList> {
     payments::list_payments(&*conn, owner, &filter).map_err(err)
 }
 
+/// События профиля: серии и одиночные платежи, по одной записи на событие.
+#[tauri::command]
+pub fn list_events(db: State<Db>, today: String) -> Res<Vec<payments::EventItem>> {
+    let (conn, owner) = scoped(&db)?;
+    payments::list_events(&*conn, owner, &today).map_err(err)
+}
+
 #[tauri::command]
 pub fn get_payment(db: State<Db>, id: i64) -> Res<Transaction> {
     let (conn, owner) = scoped(&db)?;

@@ -1,9 +1,9 @@
-export type ScreenId = "calendar" | "payments" | "accounts" | "settings";
+export type ScreenId = "calendar" | "events" | "payments" | "accounts";
 
 export interface ScreenDef {
   id: ScreenId;
   title: string;
-  icon: "calendar" | "list" | "wallet" | "gear";
+  icon: "calendar" | "list" | "wallet" | "repeat";
   emptyTitle: string;
   emptyText: string;
 }
@@ -17,11 +17,18 @@ export const screens: ScreenDef[] = [
     emptyText: "Когда появятся платежи, они отобразятся здесь по дням.",
   },
   {
+    id: "events",
+    title: "События",
+    icon: "repeat",
+    emptyTitle: "Событий пока нет",
+    emptyText: "Здесь будут повторяющиеся и разовые поступления и списания.",
+  },
+  {
     id: "payments",
     title: "Платежи",
     icon: "list",
     emptyTitle: "Платежей пока нет",
-    emptyText: "Здесь будет список всех поступлений и списаний.",
+    emptyText: "Здесь будет список всех платежей из всех событий.",
   },
   {
     id: "accounts",
@@ -29,13 +36,6 @@ export const screens: ScreenDef[] = [
     icon: "wallet",
     emptyTitle: "Счетов пока нет",
     emptyText: "Здесь будут твои счета и остатки на них в рублях.",
-  },
-  {
-    id: "settings",
-    title: "Настройки",
-    icon: "gear",
-    emptyTitle: "Настроек пока нет",
-    emptyText: "Здесь появятся параметры приложения.",
   },
 ];
 

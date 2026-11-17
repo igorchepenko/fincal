@@ -7,8 +7,8 @@ import { screens } from "./screens";
 import { parseTheme, themeAttribute } from "./theme";
 
 describe("экраны", () => {
-  it("четыре раздела в нужном порядке", () => {
-    expect(screens.map((s) => s.title)).toEqual(["Календарь", "Платежи", "Счета", "Настройки"]);
+  it("четыре раздела по умолчанию, «Настройки» вынесены из списка", () => {
+    expect(screens.map((s) => s.title)).toEqual(["Календарь", "События", "Платежи", "Счета"]);
   });
 
   it("у каждого экрана есть пустое состояние", () => {
@@ -52,6 +52,41 @@ describe("окно", () => {
     for (const s of screens) expect(html).toContain(s.title);
     expect(html).toContain("В календаре пока пусто");
     expect(html).toContain('aria-current="page"');
+  });
+
+  it("«Настройки» внизу сайдбара только иконкой, без текста на кнопке", () => {
+    const html = renderToString(
+      <ProfileProvider api={noApi}>
+        <Shell version="0.0.0" />
+      </ProfileProvider>,
+    );
+    expect(html).toMatch(/<button[^>]*aria-label="Настройки"[^>]*><svg[^>]*>.*?<\/svg><\/button>/);
+    expect(html).toContain("Настройки ⌘,");
+  });
+
+  it("пункты идут в сохранённом порядке и получают ⌘1…⌘N по позиции", () => {
+    const html = renderToString(
+      <ProfileProvider api={noApi}>
+        <Shell version="0.0.0" initialOrder={["accounts", "calendar", "payments"]} />
+      </ProfileProvider>,
+    );
+    const nav = html.slice(html.indexOf('aria-label="Разделы"'));
+    expect(nav.indexOf("Счета")).toBeLessThan(nav.indexOf("Календарь"));
+    expect(nav.indexOf("Календарь")).toBeLessThan(nav.indexOf("Платежи"));
+    expect(nav).toContain("⌘1");
+    expect(html).toContain("Счета ⌘1");
+  });
+
+  it("окно настроек открывается поверх экрана и содержит разделы", () => {
+    const html = renderToString(
+      <ProfileProvider api={noApi}>
+        <Shell version="0.6.0" initialSettings="menu" />
+      </ProfileProvider>,
+    );
+    expect(html).toContain('class="set-win"');
+    for (const t of ["Внешний вид", "Безопасность", "Меню", "О приложении"]) expect(html).toContain(t);
+    expect(html).toContain("Сбросить порядок");
+    expect(html).toContain("Счета: выше");
   });
 
   it("раздел «Счета» открывает экран счетов, а не заглушку", () => {
