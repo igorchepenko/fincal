@@ -11,3 +11,16 @@
 .shell-main{padding:28px;display:flex;flex-direction:column;gap:14px;min-width:0;overflow:auto}
 .shell-title{margin:0;font:700 20px/1.2 var(--font);color:var(--text-strong);letter-spacing:-.01em}
 .shell-empty{flex:1;justify-content:center}
+/* Профили: переключатель внизу сайдбара и диалоги */
+.profile{position:relative;display:flex;flex-direction:column;gap:6px}
+.profile-btn{background:var(--surface);box-shadow:var(--sh-control),inset 0 0 0 1px var(--line)}
+.profile-btn:hover{background:var(--sel)}
+.profile-btn:disabled{opacity:.6}
+.profile-menu{position:absolute;left:0;right:0;bottom:calc(100% + 6px);min-width:0;width:auto;z-index:20}
+.profile-menu .mi{width:100%;text-align:left}
+.modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:var(--scrim)}
+.dlg-form{display:flex;flex-direction:column;gap:14px}
+.dlg-note{color:var(--text-faint);font-size:12px}
+input.inp{border:0;outline:0;width:100%;font:inherit;font-weight:500}
+input.inp:focus{background:var(--surface);box-shadow:0 0 0 1.5px var(--field-focus),0 0 0 4px var(--accent-soft)}
+input.inp.err:focus{box-shadow:0 0 0 1.5px var(--field-error),0 0 0 4px var(--field-error-soft)}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Icon } from "./Icon";
 import { defaultScreen, screens, type ScreenDef, type ScreenId } from "./screens";
+import { ProfileSwitcher } from "../profiles/ProfileSwitcher";
+import { useProfiles } from "../profiles/ProfileContext";
 import { applyTheme, loadTheme, saveTheme, themeModes, type ThemeMode } from "./theme";
 
 function ThemeSwitch({ mode, onChange }: { mode: ThemeMode; onChange: (m: ThemeMode) => void }) {
@@ -38,6 +40,7 @@ function EmptyScreen({ screen }: { screen: ScreenDef }) {
 export function Shell({ version, initialScreen = defaultScreen }: { version: string; initialScreen?: ScreenId }) {
   const [current, setCurrent] = useState<ScreenId>(initialScreen);
   const [mode, setMode] = useState<ThemeMode>(loadTheme);
+  const { current: profile } = useProfiles();
 
   useEffect(() => {
     applyTheme(mode);
@@ -65,11 +68,13 @@ export function Shell({ version, initialScreen = defaultScreen }: { version: str
           ))}
         </nav>
         <div className="shell-foot">
+          <ProfileSwitcher />
           <ThemeSwitch mode={mode} onChange={setMode} />
           <span className="shell-ver mono">Версия {version}</span>
         </div>
       </aside>
-      <main className="shell-main">
+      {/* key: при смене профиля рабочая область создаётся заново, и экраны перечитывают данные */}
+      <main className="shell-main" key={profile?.id ?? "none"}>
         <h1 id="screen-title" className="shell-title">
           {screen.title}
         </h1>

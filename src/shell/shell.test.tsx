@@ -1,6 +1,8 @@
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { Shell } from "./Shell";
+import { ProfileProvider } from "../profiles/ProfileContext";
+import type { ProfileApi } from "../profiles/api";
 import { screens } from "./screens";
 import { parseTheme, themeAttribute } from "./theme";
 
@@ -31,9 +33,22 @@ describe("тема", () => {
   });
 });
 
+const noApi: ProfileApi = {
+  list: async () => [],
+  current: async () => ({ id: 1, name: "Я" }),
+  create: async () => 2,
+  rename: async () => {},
+  remove: async () => 1,
+  switchTo: async () => {},
+};
+
 describe("окно", () => {
   it("показывает сайдбар, активный раздел и пустое состояние", () => {
-    const html = renderToString(<Shell version="0.0.0" initialScreen="accounts" />);
+    const html = renderToString(
+      <ProfileProvider api={noApi}>
+        <Shell version="0.0.0" initialScreen="accounts" />
+      </ProfileProvider>,
+    );
     for (const s of screens) expect(html).toContain(s.title);
     expect(html).toContain("Счетов пока нет");
     expect(html).toContain('aria-current="page"');

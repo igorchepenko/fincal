@@ -1,5 +1,6 @@
 mod commands;
 mod db;
+mod profiles;
 mod store;
 
 use tauri::Manager;
@@ -30,6 +31,12 @@ pub fn run() {
             commands::create_rule,
             commands::get_setting,
             commands::set_setting,
+            commands::list_profiles,
+            commands::get_current_profile,
+            commands::create_profile,
+            commands::rename_profile,
+            commands::delete_profile,
+            commands::switch_profile,
         ])
         .run(tauri::generate_context!())
         .expect("ошибка запуска FinCal");

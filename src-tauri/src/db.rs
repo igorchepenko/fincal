@@ -8,6 +8,7 @@ use rusqlite::Connection;
 pub const MIGRATIONS: &[(&str, &str)] = &[
     ("0001_init", include_str!("../migrations/0001_init.sql")),
     ("0002_data_model", include_str!("../migrations/0002_data_model.sql")),
+    ("0003_profiles", include_str!("../migrations/0003_profiles.sql")),
 ];
 
 /// Открывает файл базы и включает проверку внешних ключей.

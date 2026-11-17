@@ -1,6 +1,11 @@
 import { Shell } from "./shell/Shell";
+import { ProfileProvider } from "./profiles/ProfileContext";
 import { currentVersion } from "./releases";
 
 export default function App() {
-  return <Shell version={currentVersion} />;
+  return (
+    <ProfileProvider>
+      <Shell version={currentVersion} />
+    </ProfileProvider>
+  );
 }
